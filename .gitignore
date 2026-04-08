@@ -8,3 +8,5 @@ Thumbs.db
 # Python
 __pycache__/
 *.pyc
+.coverage
+.pytest_cache/
