@@ -27,13 +27,25 @@ DATA_FILE = PROJECT_ROOT / "data" / "animal-sounds-data.xlsx"
 DIST_DIR = PROJECT_ROOT / "dist"
 TEMPLATE_FILE = PROJECT_ROOT / "templates" / "index.html"
 ASSETS_DIR = PROJECT_ROOT / "assets"
+NO_AUDIO_FILE = PROJECT_ROOT / "data" / "no-audio.json"
+
+
+def _load_no_audio():
+    """Load taxonCodes with no audio on Macaulay Library."""
+    if NO_AUDIO_FILE.exists():
+        with open(NO_AUDIO_FILE, "r", encoding="utf-8") as f:
+            return set(json.load(f))
+    return set()
+
+
+_NO_AUDIO = _load_no_audio()
 
 
 def _build_audio_ref(aid, scientific_name, taxon_code):
     """Build audio reference URL from taxonCode.
 
     Birds use xeno-canto (by scientific name).
-    Others use Macaulay Library (by taxonCode).
+    Others use Macaulay Library (by taxonCode), skipped if no audio.
     """
     if not scientific_name:
         return ""
@@ -43,7 +55,7 @@ def _build_audio_ref(aid, scientific_name, taxon_code):
         if len(parts) >= 2:
             return f"https://xeno-canto.org/species/{parts[0]}-{parts[1]}"
         return ""
-    if taxon_code:
+    if taxon_code and taxon_code not in _NO_AUDIO:
         return f"https://search.macaulaylibrary.org/catalog?taxonCode={taxon_code}&mediaType=audio"
     return ""
 
