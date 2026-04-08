@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>動物の鳴き声図鑑 | Animal Sound Encyclopedia</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js"></script>
+<style>
+:root {
+  --bg: #fafaf9;
+  --card: #ffffff;
+  --text: #1c1917;
+  --text2: #57534e;
+  --accent: #059669;
+  --accent-light: #d1fae5;
+  --border: #e7e5e4;
+  --hover: #f5f5f4;
+  --tag-bird: #dbeafe;
+  --tag-mammal: #fce7f3;
+  --tag-insect: #fef9c3;
+  --tag-amphibian: #d1fae5;
+  --tag-reptile: #e0e7ff;
+  --tag-fish: #cffafe;
+  --tag-other: #f3e8ff;
+  --radius: 10px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+}
+
+/* Header */
+header {
+  background: linear-gradient(135deg, #065f46 0%, #059669 100%);
+  color: white;
+  padding: 2rem 1rem 1.5rem;
+  text-align: center;
+}
+header h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+header p {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+/* Search area */
+.search-area {
+  max-width: 900px;
+  margin: -1.5rem auto 0;
+  padding: 0 1rem;
+  position: relative;
+  z-index: 10;
+}
+.search-box {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  padding: 1rem 1.2rem;
+}
+.search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  transition: border-color 0.2s;
+}
+.search-input-wrap:focus-within {
+  border-color: var(--accent);
+}
+.search-input-wrap svg { flex-shrink: 0; color: var(--text2); }
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  background: transparent;
+  font-family: inherit;
+}
+.search-input::placeholder { color: #a8a29e; }
+.search-hint {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text2);
+}
+
+/* Filters */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+.filter-btn {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--card);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  color: var(--text2);
+}
+.filter-btn:hover { background: var(--hover); }
+.filter-btn.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+/* Stats bar */
+.stats-bar {
+  max-width: 900px;
+  margin: 1rem auto 0.5rem;
+  padding: 0 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text2);
+}
+.lang-tabs {
+  display: flex;
+  gap: 0.3rem;
+}
+.lang-tab {
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--card);
+  font-size: 0.72rem;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text2);
+}
+.lang-tab.active {
+  background: var(--accent-light);
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+/* Results grid */
+.results {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0.5rem 1rem 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 0.75rem;
+}
+
+/* Animal card */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.2s;
+  border: 1px solid var(--border);
+}
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  transform: translateY(-1px);
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.4rem;
+}
+.card-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.card-name-en {
+  font-size: 0.75rem;
+  color: var(--text2);
+  margin-bottom: 0.4rem;
+}
+.card-sci {
+  font-size: 0.7rem;
+  color: #a8a29e;
+  font-style: italic;
+  margin-bottom: 0.5rem;
+}
+.class-tag {
+  font-size: 0.68rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.class-bird { background: var(--tag-bird); color: #1e40af; }
+.class-mammal { background: var(--tag-mammal); color: #be185d; }
+.class-insect { background: var(--tag-insect); color: #a16207; }
+.class-amphibian { background: var(--tag-amphibian); color: #047857; }
+.class-reptile { background: var(--tag-reptile); color: #4338ca; }
+.class-fish { background: var(--tag-fish); color: #0e7490; }
+.class-other { background: var(--tag-other); color: #7c3aed; }
+
+.ono-display {
+  background: #f5f5f4;
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  margin: 0.5rem 0;
+}
+.ono-main {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1.3;
+}
+.ono-sub {
+  font-size: 0.78rem;
+  color: var(--text2);
+  margin-top: 0.15rem;
+}
+.card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--text2);
+}
+.meta-item {
+  background: var(--hover);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+.no-voice {
+  color: #a8a29e;
+  font-style: italic;
+}
+
+/* Detail modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 100;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--card);
+  border-radius: 12px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 1.5rem;
+  position: relative;
+}
+.modal-close {
+  position: absolute;
+  top: 0.75rem; right: 0.75rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text2);
+  line-height: 1;
+}
+.modal h2 { font-size: 1.3rem; margin-bottom: 0.25rem; }
+.modal .sci { font-style: italic; color: var(--text2); font-size: 0.85rem; }
+.modal .en-name { color: var(--text2); font-size: 0.9rem; margin-bottom: 0.75rem; }
+.detail-section {
+  margin: 1rem 0;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.detail-section h3 {
+  font-size: 0.85rem;
+  color: var(--text2);
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+.ono-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.5rem;
+}
+.ono-cell {
+  background: #f5f5f4;
+  border-radius: 8px;
+  padding: 0.5rem;
+  text-align: center;
+}
+.ono-cell-lang {
+  font-size: 0.65rem;
+  color: var(--text2);
+  margin-bottom: 0.2rem;
+}
+.ono-cell-text {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+.ono-cell-scene {
+  font-size: 0.6rem;
+  color: #a8a29e;
+  margin-top: 0.15rem;
+}
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.3rem 0;
+  font-size: 0.85rem;
+}
+.detail-label { color: var(--text2); }
+.detail-links { margin-top: 0.5rem; }
+.detail-links a {
+  display: inline-block;
+  margin-right: 0.75rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+.detail-links a:hover { text-decoration: underline; }
+
+/* Responsive */
+@media (max-width: 480px) {
+  header h1 { font-size: 1.3rem; }
+  .results { grid-template-columns: 1fr; }
+  .ono-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* No results */
+.no-results {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text2);
+}
+.no-results svg { margin-bottom: 0.5rem; }
+
+/* Footer */
+footer {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+  text-align: center;
+  font-size: 0.72rem;
+  color: #a8a29e;
+  border-top: 1px solid var(--border);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>動物の鳴き声図鑑</h1>
+  <p>Animal Sound Encyclopedia &mdash; 258 species / 4 languages</p>
+</header>
+
+<div class="search-area">
+  <div class="search-box">
+    <div class="search-input-wrap">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input type="text" class="search-input" id="searchInput" placeholder="動物名、鳴き声、英名で検索...  例: ワンワン / meow / カエル">
+    </div>
+    <p class="search-hint">和名・英名・学名・オノマトペ（日本語/英語/韓国語/中国語）であいまい検索できます</p>
+    <div class="filters" id="classFilters"></div>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <span id="resultCount"></span>
+  <div class="lang-tabs" id="langTabs"></div>
+</div>
+
+<div class="results" id="results"></div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modal"></div>
+</div>
+
+<footer>
+  動物の鳴き声図鑑 &copy; 2026 &mdash; Data: 258 species, 572 onomatopoeia entries across 4 languages
+</footer>
+
+<script>
+const CLASS_INFO = {
+  "鳥綱":     { en: "Birds",      icon: "🐦", css: "class-bird" },
+  "哺乳綱":   { en: "Mammals",    icon: "🐾", css: "class-mammal" },
+  "昆虫綱":   { en: "Insects",    icon: "🦗", css: "class-insect" },
+  "両生綱":   { en: "Amphibians", icon: "🐸", css: "class-amphibian" },
+  "爬虫綱":   { en: "Reptiles",   icon: "🦎", css: "class-reptile" },
+  "硬骨魚綱": { en: "Fish",       icon: "🐟", css: "class-fish" },
+  "甲殻綱":   { en: "Crustaceans",icon: "🦀", css: "class-other" },
+  "二枚貝綱": { en: "Bivalves",   icon: "🐚", css: "class-other" },
+};
+
+const LANG_LABELS = { ja: "日本語", en: "English", ko: "한국어", zh: "中文" };
+const CONSERVATION = {
+  "LC": "低懸念", "NT": "準絶滅危惧", "VU": "危急", "EN": "絶滅危惧",
+  "CR": "深刻な危機", "DD": "データ不足", "NE": "未評価", "EW": "野生絶滅", "EX": "絶滅"
+};
+
+let animals = [];
+let fuse = null;
+let activeClass = null;
+let displayLang = "ja";
+
+// Fetch data
+async function init() {
+  const res = await fetch("animals.json");
+  animals = await res.json();
+
+  // Build Fuse index
+  fuse = new Fuse(animals, {
+    keys: [
+      { name: "nameJA", weight: 3 },
+      { name: "nameEN", weight: 2 },
+      { name: "scientificName", weight: 1.5 },
+      { name: "altJA", weight: 1 },
+      { name: "altEN", weight: 1 },
+      { name: "onomatopoeiaJA", weight: 2.5 },
+      { name: "onomatopoeia.onomatopoeia", weight: 2.5 },
+      { name: "voiceMethod", weight: 0.5 },
+      { name: "family", weight: 0.5 },
+      { name: "order", weight: 0.5 },
+    ],
+    threshold: 0.35,
+    ignoreLocation: true,
+    includeScore: true,
+  });
+
+  renderFilters();
+  renderLangTabs();
+  renderResults(animals);
+
+  document.getElementById("searchInput").addEventListener("input", debounce(onSearch, 200));
+  document.getElementById("modalOverlay").addEventListener("click", e => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+}
+
+function debounce(fn, ms) {
+  let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+
+function renderFilters() {
+  const container = document.getElementById("classFilters");
+  const allBtn = document.createElement("button");
+  allBtn.className = "filter-btn active";
+  allBtn.textContent = "すべて";
+  allBtn.onclick = () => { activeClass = null; updateFilters(); onSearch(); };
+  container.appendChild(allBtn);
+
+  const counts = {};
+  animals.forEach(a => { counts[a.class] = (counts[a.class] || 0) + 1; });
+
+  Object.entries(CLASS_INFO).forEach(([cls, info]) => {
+    if (!counts[cls]) return;
+    const btn = document.createElement("button");
+    btn.className = "filter-btn";
+    btn.dataset.cls = cls;
+    btn.textContent = `${info.icon} ${cls} (${counts[cls]})`;
+    btn.onclick = () => { activeClass = cls; updateFilters(); onSearch(); };
+    container.appendChild(btn);
+  });
+}
+
+function updateFilters() {
+  document.querySelectorAll(".filter-btn").forEach(btn => {
+    if (!btn.dataset.cls) btn.classList.toggle("active", activeClass === null);
+    else btn.classList.toggle("active", btn.dataset.cls === activeClass);
+  });
+}
+
+function renderLangTabs() {
+  const container = document.getElementById("langTabs");
+  Object.entries(LANG_LABELS).forEach(([code, label]) => {
+    const btn = document.createElement("button");
+    btn.className = `lang-tab${code === displayLang ? " active" : ""}`;
+    btn.textContent = label;
+    btn.onclick = () => { displayLang = code; updateLangTabs(); renderCurrentResults(); };
+    btn.dataset.lang = code;
+    container.appendChild(btn);
+  });
+}
+
+function updateLangTabs() {
+  document.querySelectorAll(".lang-tab").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.lang === displayLang);
+  });
+}
+
+let currentResults = [];
+
+function onSearch() {
+  const query = document.getElementById("searchInput").value.trim();
+  let results;
+
+  if (query.length === 0) {
+    results = animals;
+  } else {
+    results = fuse.search(query).map(r => r.item);
+  }
+
+  if (activeClass) {
+    results = results.filter(a => a.class === activeClass);
+  }
+
+  renderResults(results);
+}
+
+function renderCurrentResults() {
+  renderResults(currentResults);
+}
+
+function getOno(animal, lang) {
+  const entries = animal.onomatopoeia.filter(o => o.lang === lang);
+  if (entries.length === 0) return null;
+  return entries.map(e => e.onomatopoeia).filter(Boolean).join(" / ");
+}
+
+function renderResults(results) {
+  currentResults = results;
+  const container = document.getElementById("results");
+  document.getElementById("resultCount").textContent = `${results.length} 件`;
+
+  if (results.length === 0) {
+    container.innerHTML = `
+      <div class="no-results">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d6d3d1" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M8 11h6"/></svg>
+        <p>該当する動物が見つかりませんでした</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = results.map(a => {
+    const ci = CLASS_INFO[a.class] || { icon: "🔹", css: "class-other", en: "" };
+    const ono = getOno(a, displayLang) || (displayLang !== "ja" ? a.onomatopoeiaJA : "");
+    const hasVoice = a.hasVoice === "あり";
+
+    let onoHTML;
+    if (hasVoice && ono) {
+      const subLang = displayLang === "ja" ? "en" : "ja";
+      const subOno = getOno(a, subLang) || (subLang === "ja" ? a.onomatopoeiaJA : "");
+      onoHTML = `<div class="ono-display">
+        <div class="ono-main">${esc(ono)}</div>
+        ${subOno ? `<div class="ono-sub">${esc(LANG_LABELS[subLang])}: ${esc(subOno)}</div>` : ""}
+      </div>`;
+    } else if (hasVoice) {
+      onoHTML = `<div class="ono-display"><div class="ono-main no-voice">(${esc(LANG_LABELS[displayLang])}データなし)</div></div>`;
+    } else {
+      onoHTML = `<div class="ono-display"><div class="ono-main no-voice">鳴き声なし</div></div>`;
+    }
+
+    return `<div class="card" onclick="openModal('${a.id}')">
+      <div class="card-header">
+        <div>
+          <div class="card-name">${esc(a.nameJA)}</div>
+          <div class="card-name-en">${esc(a.nameEN)}</div>
+        </div>
+        <span class="class-tag ${ci.css}">${ci.icon} ${esc(a.class)}</span>
+      </div>
+      <div class="card-sci">${esc(a.scientificName)}</div>
+      ${onoHTML}
+      <div class="card-meta">
+        ${a.voiceMethod && a.voiceMethod !== "鳴き声なし" ? `<span class="meta-item">${esc(a.voiceMethod)}</span>` : ""}
+        ${a.conservation ? `<span class="meta-item">${esc(a.conservation)}</span>` : ""}
+        ${a.regions.length > 0 ? `<span class="meta-item">${esc(a.regions.map(r=>r.nameJA).slice(0,2).join("・"))}${a.regions.length > 2 ? " +" + (a.regions.length-2) : ""}</span>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function openModal(id) {
+  const a = animals.find(x => x.id === id);
+  if (!a) return;
+  const ci = CLASS_INFO[a.class] || { icon: "🔹", css: "class-other", en: "" };
+
+  const onoEntries = a.onomatopoeia.filter(o => o.onomatopoeia);
+  const onoByLang = {};
+  onoEntries.forEach(o => {
+    if (!onoByLang[o.lang]) onoByLang[o.lang] = [];
+    onoByLang[o.lang].push(o);
+  });
+
+  document.getElementById("modal").innerHTML = `
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <span class="class-tag ${ci.css}">${ci.icon} ${esc(a.class)} / ${esc(a.order)} / ${esc(a.family)}</span>
+    <h2 style="margin-top:0.5rem">${esc(a.nameJA)}</h2>
+    <div class="en-name">${esc(a.nameEN)}${a.altEN ? ` (${esc(a.altEN)})` : ""}</div>
+    <div class="sci">${esc(a.scientificName)}</div>
+
+    ${onoEntries.length > 0 ? `
+    <div class="detail-section">
+      <h3>オノマトペ / Onomatopoeia</h3>
+      <div class="ono-grid">
+        ${Object.entries(onoByLang).map(([lang, entries]) =>
+          entries.map(o => `
+            <div class="ono-cell">
+              <div class="ono-cell-lang">${esc(LANG_LABELS[lang] || lang)}</div>
+              <div class="ono-cell-text">${esc(o.onomatopoeia)}</div>
+              ${o.scene ? `<div class="ono-cell-scene">${esc(o.scene)}</div>` : ""}
+            </div>
+          `).join("")
+        ).join("")}
+      </div>
+    </div>` : ""}
+
+    <div class="detail-section">
+      <h3>基本情報</h3>
+      <div class="detail-row"><span class="detail-label">発声方法</span><span>${esc(a.voiceMethod || "—")}</span></div>
+      <div class="detail-row"><span class="detail-label">保全状況</span><span>${esc(a.conservation)}${CONSERVATION[a.conservation] ? ` (${CONSERVATION[a.conservation]})` : ""}</span></div>
+      <div class="detail-row"><span class="detail-label">生息地域</span><span>${a.regions.map(r => esc(r.nameJA)).join("、") || esc(a.habitat)}</span></div>
+      ${a.note ? `<div class="detail-row"><span class="detail-label">備考</span><span>${esc(a.note)}</span></div>` : ""}
+    </div>
+
+    <div class="detail-section">
+      <h3>外部リンク</h3>
+      <div class="detail-links">
+        ${a.imageRef ? `<a href="${esc(a.imageRef)}" target="_blank" rel="noopener">📷 Wikimedia Commons</a>` : ""}
+        ${a.audioRef ? `<a href="${esc(a.audioRef)}" target="_blank" rel="noopener">🔊 ${a.id.match(/^[AB]/) ? "xeno-canto" : "Macaulay Library"}</a>` : ""}
+        <a href="https://ja.wikipedia.org/wiki/${encodeURIComponent(a.nameJA)}" target="_blank" rel="noopener">📖 Wikipedia (JA)</a>
+        <a href="https://en.wikipedia.org/wiki/${encodeURIComponent(a.nameEN)}" target="_blank" rel="noopener">📖 Wikipedia (EN)</a>
+      </div>
+    </div>
+  `;
+  document.getElementById("modalOverlay").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeModal() {
+  document.getElementById("modalOverlay").classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+function esc(s) {
+  if (!s) return "";
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+init();
+</script>
+</body>
+</html>
