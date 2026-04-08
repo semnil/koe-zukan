@@ -18,6 +18,7 @@
 <meta name="twitter:description" content="世界の動物{{SPECIES_COUNT}}種の鳴き声オノマトペを日本語・英語・韓国語・中国語で検索できる図鑑">
 <meta name="twitter:image" content="{{SITE_URL}}/ogp.png">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.json">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js"></script>
 <style>
 :root {
@@ -366,6 +367,41 @@ header p {
 }
 .no-results svg { margin-bottom: 0.5rem; }
 
+/* Share buttons */
+.share-section {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+.share-section h3 {
+  font-size: 0.85rem;
+  color: var(--text2);
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+.share-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  font-size: 0.78rem;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--text);
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.share-btn:hover { background: var(--hover); }
+.share-btn.copied { background: var(--accent-light); color: var(--accent); }
+
 /* Footer */
 footer {
   max-width: 900px;
@@ -433,23 +469,46 @@ const CONSERVATION = {
 let animals = [];
 let fuse = null;
 let activeClass = null;
-let displayLang = "ja";
+let displayLang = (() => {
+  const lang = (navigator.language || "ja").toLowerCase();
+  if (lang.startsWith("ko")) return "ko";
+  if (lang.startsWith("zh")) return "zh";
+  if (lang.startsWith("en")) return "en";
+  return "ja";
+})();
+
+// Katakana to Hiragana conversion
+function kataToHira(str) {
+  return str.replace(/[\u30A1-\u30F6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60));
+}
 
 // Fetch data
 async function init() {
   const res = await fetch("animals.json");
   animals = await res.json();
 
+  // Add hiragana fields for search
+  animals.forEach(a => {
+    a._hira = kataToHira(a.nameJA || "");
+    if (a.altJA) a._altHira = kataToHira(a.altJA);
+    a._onoHira = kataToHira(a.onomatopoeiaJA || "");
+    a._onoAllHira = a.onomatopoeia.map(o => kataToHira(o.onomatopoeia || "")).filter(Boolean);
+  });
+
   // Build Fuse index
   fuse = new Fuse(animals, {
     keys: [
       { name: "nameJA", weight: 3 },
+      { name: "_hira", weight: 3 },
       { name: "nameEN", weight: 2 },
       { name: "scientificName", weight: 1.5 },
       { name: "altJA", weight: 1 },
+      { name: "_altHira", weight: 1 },
       { name: "altEN", weight: 1 },
       { name: "onomatopoeiaJA", weight: 2.5 },
+      { name: "_onoHira", weight: 2.5 },
       { name: "onomatopoeia.onomatopoeia", weight: 2.5 },
+      { name: "_onoAllHira", weight: 2.5 },
       { name: "voiceMethod", weight: 0.5 },
       { name: "family", weight: 0.5 },
       { name: "order", weight: 0.5 },
@@ -668,6 +727,13 @@ function openModal(id, pushState = true) {
         <a href="https://en.wikipedia.org/wiki/${encodeURIComponent(a.nameEN)}" target="_blank" rel="noopener">📖 Wikipedia (EN)</a>
       </div>
     </div>
+
+    <div class="share-section">
+      <h3>共有 / Share</h3>
+      <div class="share-buttons">
+        ${shareButtons(a)}
+      </div>
+    </div>
   `;
   document.getElementById("modalOverlay").classList.add("open");
   document.body.style.overflow = "hidden";
@@ -683,12 +749,37 @@ function closeModal(pushState = true) {
   }
 }
 
+function shareButtons(a) {
+  const url = `{{SITE_URL}}/species/${a.id}/`;
+  const text = `${a.nameJA}（${a.nameEN}）の鳴き声`;
+  const eu = encodeURIComponent(url);
+  const et = encodeURIComponent(text);
+  return `
+    <a class="share-btn" href="https://twitter.com/intent/tweet?text=${et}&url=${eu}" target="_blank" rel="noopener">𝕏 Post</a>
+    <a class="share-btn" href="https://www.facebook.com/sharer/sharer.php?u=${eu}" target="_blank" rel="noopener">Facebook</a>
+    <a class="share-btn" href="https://social-plugins.line.me/lineit/share?url=${eu}" target="_blank" rel="noopener">LINE</a>
+    <button class="share-btn" onclick="copyShareUrl('${esc(url)}', this)">📋 URLをコピー</button>
+  `;
+}
+
+function copyShareUrl(url, btn) {
+  navigator.clipboard.writeText(url).then(() => {
+    btn.classList.add("copied");
+    btn.textContent = "✓ コピーしました";
+    setTimeout(() => { btn.classList.remove("copied"); btn.textContent = "📋 URLをコピー"; }, 2000);
+  }).catch(() => {
+    btn.textContent = "コピー失敗";
+    setTimeout(() => { btn.textContent = "📋 URLをコピー"; }, 2000);
+  });
+}
+
 function esc(s) {
   if (!s) return "";
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
 
 init();
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
 </script>
 </body>
 </html>

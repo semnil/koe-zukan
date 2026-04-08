@@ -9,13 +9,14 @@ data/animal-sounds-data.xlsx を読み込み、dist/ に静的サイトを出力
     python scripts/build.py
 """
 
+import html as html_mod
 import json
 import os
 import shutil
 import sys
 from datetime import date
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 try:
     import openpyxl
@@ -212,6 +213,17 @@ def write_json(data, filepath):
     print(f"  {filepath.name}: {size:,} bytes")
 
 
+def _apply_placeholders(html, mapping):
+    """Replace {{KEY}} placeholders in HTML with values from mapping dict."""
+    import re
+    for key, value in mapping.items():
+        html = html.replace(f"{{{{{key}}}}}", str(value))
+    remaining = re.findall(r"\{\{[A-Z_]+\}\}", html)
+    if remaining:
+        print(f"  WARNING: unreplaced placeholders: {remaining}")
+    return html
+
+
 def generate_html(animals, template_path, output_path):
     """Read HTML template and inject data if template exists."""
     if template_path.exists():
@@ -226,12 +238,13 @@ def generate_html(animals, template_path, output_path):
         print(f"  WARNING: No template at {template_path} and no existing {output_path.name}")
         return
 
-    # Inject dynamic values into HTML template
     stats = build_stats(animals)
-    html = html.replace("{{SITE_URL}}", SITE_URL)
-    html = html.replace("{{SPECIES_COUNT}}", str(stats['total_species']))
-    html = html.replace("{{LANGUAGE_COUNT}}", str(stats['language_count']))
-    html = html.replace("{{ONOMATOPOEIA_COUNT}}", str(stats['total_onomatopoeia']))
+    html = _apply_placeholders(html, {
+        "SITE_URL": SITE_URL,
+        "SPECIES_COUNT": stats['total_species'],
+        "LANGUAGE_COUNT": stats['language_count'],
+        "ONOMATOPOEIA_COUNT": stats['total_onomatopoeia'],
+    })
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html)
@@ -251,44 +264,47 @@ def _parse_svg_points(svg_path):
     return [(float(coords[i]), float(coords[i + 1])) for i in range(0, len(coords), 2)]
 
 
-def _find_cjk_font():
-    """Find a CJK-capable font across platforms."""
+def _find_cjk_fonts():
+    """Find CJK fonts across platforms. Returns dict with 'ja', 'ko', 'zh' keys."""
     import sys as _sys
-    candidates = (
-        # Windows
-        ["C:/Windows/Fonts/meiryo.ttc", "C:/Windows/Fonts/msgothic.ttc"]
-        if _sys.platform == "win32" else
-        # Linux (GitHub Actions Ubuntu)
-        ["/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-         "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-         "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc"]
-    )
-    for path in candidates:
-        if Path(path).exists():
-            return path
-    return None
+    if _sys.platform == "win32":
+        ja_candidates = ["C:/Windows/Fonts/meiryo.ttc", "C:/Windows/Fonts/msgothic.ttc"]
+        ko_candidates = ["C:/Windows/Fonts/malgun.ttf", "C:/Windows/Fonts/malgunbd.ttf"]
+        zh_candidates = ["C:/Windows/Fonts/msyh.ttc", "C:/Windows/Fonts/simsun.ttc"]
+    else:
+        # Linux: Noto Sans CJK covers all
+        noto = ["/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+                "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+                "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc"]
+        ja_candidates = ko_candidates = zh_candidates = noto
+
+    def _find(candidates):
+        for p in candidates:
+            if Path(p).exists():
+                return p
+        return None
+
+    ja = _find(ja_candidates)
+    return {"ja": ja, "ko": _find(ko_candidates) or ja, "zh": _find(zh_candidates) or ja}
 
 
-def generate_ogp(stats, output_path):
-    """Generate OGP image (1200x630) with dynamic stats."""
+def _ogp_base_image():
+    """Create base OGP image (gradient + cat silhouette). Returns (Image, font_path) or None."""
     try:
-        from PIL import Image, ImageDraw, ImageFont
+        from PIL import Image, ImageDraw
     except ImportError:
-        print("  WARNING: Pillow not installed, skipping OGP image generation")
-        return
+        return None
 
     W, H = 1200, 630
     img = Image.new("RGB", (W, H), (42, 38, 52))
     draw = ImageDraw.Draw(img)
 
-    # Gradient background
     for y in range(H):
         r = int(42 + (58 - 42) * y / H)
         g = int(38 + (48 - 38) * y / H)
         b = int(52 + (68 - 52) * y / H)
         draw.line([(0, y), (W, y)], fill=(r, g, b))
 
-    # Cat silhouette from favicon.svg
     favicon = ASSETS_DIR / "favicon.svg"
     raw_points = _parse_svg_points(favicon) if favicon.exists() else []
     if raw_points:
@@ -297,8 +313,23 @@ def generate_ogp(stats, output_path):
         points = [(cx + (x - 32) * scale, cy + (y - 38) * scale) for x, y in raw_points]
         draw.polygon(points, fill=(91, 74, 122))
 
-    # Fonts
-    font_path = _find_cjk_font()
+    return img
+
+
+def generate_ogp(stats, output_path, base_image=None):
+    """Generate top-page OGP image (1200x630) with dynamic stats."""
+    from PIL import ImageDraw, ImageFont
+
+    base = base_image or _ogp_base_image()
+    if base is None:
+        print("  WARNING: Pillow not installed, skipping OGP image generation")
+        return
+
+    img = base.copy()
+    draw = ImageDraw.Draw(img)
+
+    fonts = _find_cjk_fonts()
+    font_path = fonts["ja"]
     if font_path:
         title_font = ImageFont.truetype(font_path, 52)
         sub_font = ImageFont.truetype(font_path, 24)
@@ -322,12 +353,210 @@ def generate_ogp(stats, output_path):
     print(f"  {output_path.name}: {size:,} bytes")
 
 
+def generate_species_ogp(animals, dist_dir, base_image=None):
+    """Generate per-species OGP images at /species/{id}/ogp.png."""
+    from PIL import ImageDraw, ImageFont
+
+    base = base_image or _ogp_base_image()
+    if base is None:
+        print("  WARNING: Pillow not installed, skipping species OGP")
+        return
+
+    fonts = _find_cjk_fonts()
+    ja_path = fonts["ja"]
+    if ja_path:
+        name_font = ImageFont.truetype(ja_path, 48)
+        ono_font = ImageFont.truetype(ja_path, 64)
+        small_font = ImageFont.truetype(ja_path, 18)
+    else:
+        name_font = ImageFont.load_default()
+        ono_font = ImageFont.load_default()
+        small_font = ImageFont.load_default()
+
+    # Per-language sub fonts for onomatopoeia
+    lang_fonts = {}
+    for lang, fp in fonts.items():
+        lang_fonts[lang] = ImageFont.truetype(fp, 22) if fp else ImageFont.load_default()
+    # English uses ja font
+    lang_fonts["en"] = lang_fonts["ja"]
+
+    white = (255, 255, 255)
+    light = (200, 195, 210)
+    accent = (5, 150, 105)
+    count = 0
+
+    for a in animals:
+        img = base.copy()
+        draw = ImageDraw.Draw(img)
+
+        # Species name (JA)
+        draw.text((440, 160), a["nameJA"], fill=white, font=name_font)
+
+        # English name + scientific name
+        en_line = a.get("nameEN", "")
+        if a.get("scientificName"):
+            en_line += f"  ({a['scientificName']})" if en_line else a["scientificName"]
+        draw.text((440, 225), en_line, fill=light, font=small_font)
+
+        # Accent line
+        draw.rectangle([(440, 260), (750, 263)], fill=accent)
+
+        # Onomatopoeia (JA) — large
+        ja_ono = a.get("onomatopoeiaJA", "")
+        if ja_ono:
+            draw.text((440, 280), ja_ono, fill=accent, font=ono_font)
+
+        # Other language onomatopoeia (use per-language font)
+        other_onos = []
+        for o in a.get("onomatopoeia", []):
+            if o["lang"] != "ja" and o["onomatopoeia"]:
+                label = LANG_LABELS.get(o["lang"], o["lang"])
+                other_onos.append((o["lang"], f"{label}: {o['onomatopoeia']}"))
+        if other_onos:
+            y_pos = 360
+            for lang, line in other_onos[:3]:
+                font = lang_fonts.get(lang, lang_fonts["ja"])
+                draw.text((440, y_pos), line, fill=light, font=font)
+                y_pos += 30
+
+        # Site name
+        draw.text((440, 470), "動物の鳴き声図鑑", fill=(150, 145, 160), font=small_font)
+
+        out_dir = dist_dir / "species" / a["id"]
+        out_dir.mkdir(parents=True, exist_ok=True)
+        img.save(out_dir / "ogp.png", "PNG", optimize=True)
+        count += 1
+
+    total_size = sum(
+        f.stat().st_size for f in (dist_dir / "species").rglob("ogp.png")
+    )
+    print(f"  {count} species OGP images ({total_size:,} bytes total)")
+
+
+SPECIES_TEMPLATE = PROJECT_ROOT / "templates" / "species.html"
+
+CONSERVATION_JA = {
+    "LC": "低懸念", "NT": "準絶滅危惧", "VU": "危急", "EN": "絶滅危惧",
+    "CR": "深刻な危機", "DD": "データ不足", "NE": "未評価", "EW": "野生絶滅", "EX": "絶滅",
+}
+
+LANG_LABELS = {"ja": "日本語", "en": "English", "ko": "한국어", "zh": "中文"}
+
+
+def generate_species_pages(animals, dist_dir):
+    """Generate individual HTML pages for each species at /species/{id}/index.html."""
+    if not SPECIES_TEMPLATE.exists():
+        print("  WARNING: species.html template not found, skipping")
+        return 0
+
+    with open(SPECIES_TEMPLATE, "r", encoding="utf-8") as f:
+        template = f.read()
+
+    esc = html_mod.escape
+    count = 0
+    for a in animals:
+        aid = a["id"]
+
+        # Onomatopoeia by language
+        ono_html_parts = []
+        for o in a["onomatopoeia"]:
+            if o["onomatopoeia"]:
+                lang_label = esc(LANG_LABELS.get(o["lang"], o["lang"]))
+                ono_html_parts.append(
+                    f'<div class="ono-cell">'
+                    f'<div class="ono-cell-lang">{lang_label}</div>'
+                    f'<div class="ono-cell-text">{esc(o["onomatopoeia"])}</div>'
+                    f'{"<div class=\"ono-cell-scene\">" + esc(o["scene"]) + "</div>" if o["scene"] else ""}'
+                    f'</div>'
+                )
+        ono_section = ""
+        if ono_html_parts:
+            ono_section = (
+                '<div class="detail-section"><h3>オノマトペ / Onomatopoeia</h3>'
+                f'<div class="ono-grid">{"".join(ono_html_parts)}</div></div>'
+            )
+
+        # Conservation
+        cons = a.get("conservation", "")
+        cons_label = CONSERVATION_JA.get(cons, "")
+        cons_display = f"{esc(cons)} ({cons_label})" if cons_label else esc(cons)
+
+        # Regions
+        regions_text = "、".join(esc(r["nameJA"]) for r in a["regions"]) or esc(a.get("habitat", ""))
+
+        # External links
+        links = []
+        if a.get("imageRef"):
+            links.append(f'<a href="{esc(a["imageRef"])}" target="_blank" rel="noopener">📷 Wikimedia Commons</a>')
+        if a.get("audioRef"):
+            audio_label = "xeno-canto" if aid.startswith(("A", "B")) else "Macaulay Library"
+            links.append(f'<a href="{esc(a["audioRef"])}" target="_blank" rel="noopener">🔊 {audio_label}</a>')
+        links.append(f'<a href="https://ja.wikipedia.org/wiki/{quote(a["nameJA"], safe="")}" target="_blank" rel="noopener">📖 Wikipedia (JA)</a>')
+        if a.get("nameEN"):
+            links.append(f'<a href="https://en.wikipedia.org/wiki/{quote(a["nameEN"], safe="")}" target="_blank" rel="noopener">📖 Wikipedia (EN)</a>')
+        links_html = "\n".join(links)
+
+        # Description for meta
+        ja_ono = a.get("onomatopoeiaJA", "")
+        desc = f"{a['nameJA']}（{a.get('nameEN', '')}）の鳴き声"
+        if ja_ono:
+            desc += f"「{ja_ono}」"
+        desc += "。多言語オノマトペと基本情報"
+
+        alt_en = a.get("altEN", "")
+        note = a.get("note", "")
+        note_html = f'<div class="detail-row"><span class="detail-label">備考</span><span>{esc(note)}</span></div>' if note else ""
+        page = _apply_placeholders(template, {
+            "SITE_URL": SITE_URL,
+            "ID": esc(aid),
+            "NAME_JA": esc(a["nameJA"]),
+            "NAME_EN": esc(a.get("nameEN", "")),
+            "SCIENTIFIC_NAME": esc(a.get("scientificName", "")),
+            "ALT_EN": f" ({esc(alt_en)})" if alt_en else "",
+            "CLASS": esc(a.get("class", "")),
+            "ORDER": esc(a.get("order", "")),
+            "FAMILY": esc(a.get("family", "")),
+            "VOICE_METHOD": esc(a.get("voiceMethod", "") or "—"),
+            "CONSERVATION": cons_display,
+            "REGIONS": regions_text,
+            "NOTE": note_html,
+            "DESCRIPTION": esc(desc),
+            "ONO_SECTION": ono_section,
+            "LINKS": links_html,
+        })
+
+        # Share buttons
+        share_url = f"{SITE_URL}/species/{aid}/"
+        share_text = f"{a['nameJA']}（{a.get('nameEN', '')}）の鳴き声"
+        eu = quote(share_url, safe="")
+        et = quote(share_text, safe="")
+        share_html = (
+            f'<a class="share-btn" href="https://twitter.com/intent/tweet?text={et}&url={eu}" target="_blank" rel="noopener">\U0001d54f Post</a>'
+            f'<a class="share-btn" href="https://www.facebook.com/sharer/sharer.php?u={eu}" target="_blank" rel="noopener">Facebook</a>'
+            f'<a class="share-btn" href="https://social-plugins.line.me/lineit/share?url={eu}" target="_blank" rel="noopener">LINE</a>'
+            f'<button class="share-btn" onclick="copyShareUrl(\'{esc(share_url)}\', this)">\U0001f4cb URL\u3092\u30b3\u30d4\u30fc</button>'
+        )
+        page = page.replace("{{SHARE_BUTTONS}}", share_html)
+
+        out_dir = dist_dir / "species" / aid
+        out_dir.mkdir(parents=True, exist_ok=True)
+        with open(out_dir / "index.html", "w", encoding="utf-8") as f:
+            f.write(page)
+        count += 1
+
+    total_size = sum(
+        f.stat().st_size for f in (dist_dir / "species").rglob("index.html")
+    )
+    print(f"  {count} species pages ({total_size:,} bytes total)")
+    return count
+
+
 def generate_sitemap(animals, output_path):
     """Generate sitemap.xml with top page and deep links for each species."""
     today = date.today().isoformat()
     urls = [f'  <url><loc>{SITE_URL}/</loc><lastmod>{today}</lastmod><priority>1.0</priority></url>']
     for a in animals:
-        urls.append(f'  <url><loc>{SITE_URL}/?id={a["id"]}</loc><lastmod>{today}</lastmod><priority>0.6</priority></url>')
+        urls.append(f'  <url><loc>{SITE_URL}/species/{a["id"]}/</loc><lastmod>{today}</lastmod><priority>0.6</priority></url>')
     xml = ('<?xml version="1.0" encoding="UTF-8"?>\n'
            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
            + "\n".join(urls) + "\n"
@@ -336,6 +565,70 @@ def generate_sitemap(animals, output_path):
         f.write(xml)
     size = os.path.getsize(output_path)
     print(f"  {output_path.name}: {size:,} bytes ({len(urls)} URLs)")
+
+
+def generate_manifest(output_path):
+    """Generate PWA manifest.json."""
+    manifest = {
+        "name": "動物の鳴き声図鑑",
+        "short_name": "鳴き声図鑑",
+        "description": "多言語対応の動物オノマトペ検索サイト",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#fafaf9",
+        "theme_color": "#059669",
+        "icons": [
+            {"src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any"}
+        ],
+    }
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, ensure_ascii=False, indent=2)
+    print(f"  {output_path.name}: {os.path.getsize(output_path):,} bytes")
+
+
+def generate_sw(animals, output_path):
+    """Generate service worker for offline caching."""
+    # Cache version based on build date + species count for busting
+    version = f"v{date.today().isoformat()}-{len(animals)}"
+    urls_to_cache = [
+        "/",
+        "/animals.json",
+        "/regions.json",
+        "/favicon.svg",
+        "/manifest.json",
+    ]
+    sw = f"""const CACHE_NAME = "koe-zukan-{version}";
+const URLS = {json.dumps(urls_to_cache)};
+
+self.addEventListener("install", e => {{
+  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(URLS)));
+  self.skipWaiting();
+}});
+
+self.addEventListener("activate", e => {{
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    )
+  );
+  self.clients.claim();
+}});
+
+self.addEventListener("fetch", e => {{
+  e.respondWith(
+    caches.match(e.request).then(r => r || fetch(e.request).then(resp => {{
+      if (resp.ok && e.request.method === "GET") {{
+        const clone = resp.clone();
+        caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+      }}
+      return resp;
+    }})).catch(() => caches.match("/"))
+  );
+}});
+"""
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(sw)
+    print(f"  {output_path.name}: {os.path.getsize(output_path):,} bytes")
 
 
 def main():
@@ -383,9 +676,20 @@ def main():
         f.write(cname_domain + "\n")
     print(f"  CNAME: {cname_domain}")
 
-    # Generate OGP image
-    print("Generating OGP image...")
-    generate_ogp(stats, DIST_DIR / "ogp.png")
+    # Generate species pages
+    print("Generating species pages...")
+    generate_species_pages(animals, DIST_DIR)
+
+    # Generate OGP images
+    print("Generating OGP images...")
+    ogp_base = _ogp_base_image()
+    generate_ogp(stats, DIST_DIR / "ogp.png", ogp_base)
+    generate_species_ogp(animals, DIST_DIR, ogp_base)
+
+    # Generate PWA files
+    print("Generating PWA files...")
+    generate_manifest(DIST_DIR / "manifest.json")
+    generate_sw(animals, DIST_DIR / "sw.js")
 
     # Copy assets
     if ASSETS_DIR.exists():
