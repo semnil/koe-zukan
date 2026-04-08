@@ -26,6 +26,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_FILE = PROJECT_ROOT / "data" / "animal-sounds-data.xlsx"
 DIST_DIR = PROJECT_ROOT / "dist"
 TEMPLATE_FILE = PROJECT_ROOT / "templates" / "index.html"
+ASSETS_DIR = PROJECT_ROOT / "assets"
 
 
 def _build_audio_ref(aid, scientific_name, taxon_code):
@@ -261,6 +262,15 @@ def main():
     # Generate HTML
     print("Generating HTML...")
     generate_html(animals, TEMPLATE_FILE, DIST_DIR / "index.html")
+
+    # Copy assets
+    if ASSETS_DIR.exists():
+        print("Copying assets...")
+        for src in ASSETS_DIR.iterdir():
+            if src.is_file():
+                dst = DIST_DIR / src.name
+                shutil.copy2(src, dst)
+                print(f"  {src.name}: {os.path.getsize(dst):,} bytes")
 
     print()
     print(f"Build complete! {stats['total_species']} species → {DIST_DIR}/")
