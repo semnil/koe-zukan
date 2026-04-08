@@ -28,6 +28,25 @@ DIST_DIR = PROJECT_ROOT / "dist"
 TEMPLATE_FILE = PROJECT_ROOT / "templates" / "index.html"
 
 
+def _build_audio_ref(aid, scientific_name, taxon_code):
+    """Build audio reference URL from taxonCode.
+
+    Birds use xeno-canto (by scientific name).
+    Others use Macaulay Library (by taxonCode).
+    """
+    if not scientific_name:
+        return ""
+    if aid.startswith("B"):
+        # xeno-canto: Genus-species format
+        parts = scientific_name.split()
+        if len(parts) >= 2:
+            return f"https://xeno-canto.org/species/{parts[0]}-{parts[1]}"
+        return ""
+    if taxon_code:
+        return f"https://search.macaulaylibrary.org/catalog?taxonCode={taxon_code}&mediaType=audio"
+    return ""
+
+
 def extract_data(wb):
     """Excel workbook → Python dicts"""
 
@@ -137,7 +156,8 @@ def extract_data(wb):
             "conservation": row[10] or "",
             "imageRef": row[11] or "",
             "note": row[12] or "",
-            "audioRef": row[13] if len(row) > 13 else "",
+            "audioRef": _build_audio_ref(aid, names.get("scientificName", ""),
+                                         row[14] if len(row) > 14 else ""),
             "onomatopoeia": onos,
             "regions": resolved_regions,
         }
