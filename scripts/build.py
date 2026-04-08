@@ -29,7 +29,7 @@ DIST_DIR = PROJECT_ROOT / "dist"
 TEMPLATE_FILE = PROJECT_ROOT / "templates" / "index.html"
 ASSETS_DIR = PROJECT_ROOT / "assets"
 NO_AUDIO_FILE = PROJECT_ROOT / "data" / "no-audio.json"
-SITE_URL = "https://koe-zukan.muddy-forest-7547.workers.dev"
+SITE_URL = "https://koe-zukan.semnil.com"
 
 
 def _load_no_audio():
@@ -365,6 +365,12 @@ def main():
     # Generate sitemap
     print("Generating sitemap...")
     generate_sitemap(animals, DIST_DIR / "sitemap.xml")
+
+    # CNAME for GitHub Pages custom domain
+    cname_domain = SITE_URL.replace("https://", "").replace("http://", "").rstrip("/")
+    with open(DIST_DIR / "CNAME", "w") as f:
+        f.write(cname_domain + "\n")
+    print(f"  CNAME: {cname_domain}")
 
     # Generate OGP image
     print("Generating OGP image...")
