@@ -15,6 +15,7 @@ import shutil
 import sys
 from datetime import date
 from pathlib import Path
+from urllib.parse import urlparse
 
 try:
     import openpyxl
@@ -172,7 +173,7 @@ def extract_data(wb):
             "imageRef": row[11] or "",
             "note": row[12] or "",
             "audioRef": _build_audio_ref(aid, names.get("scientificName", ""),
-                                         row[14] if len(row) > 14 else ""),
+                                         str(row[14]) if len(row) > 14 and row[14] else ""),
             "onomatopoeia": onos,
             "regions": resolved_regions,
         }
@@ -225,21 +226,47 @@ def generate_html(animals, template_path, output_path):
         print(f"  WARNING: No template at {template_path} and no existing {output_path.name}")
         return
 
-    # Inject stats into HTML
+    # Inject dynamic values into HTML template
     stats = build_stats(animals)
-    html = html.replace(
-        "258 species / 4 languages",
-        f"{stats['total_species']} species / {stats['language_count']} languages"
-    )
-    html = html.replace(
-        "Data: 258 species, 572 onomatopoeia entries across 4 languages",
-        f"Data: {stats['total_species']} species, {stats['total_onomatopoeia']} onomatopoeia entries across {stats['language_count']} languages"
-    )
+    html = html.replace("{{SITE_URL}}", SITE_URL)
+    html = html.replace("{{SPECIES_COUNT}}", str(stats['total_species']))
+    html = html.replace("{{LANGUAGE_COUNT}}", str(stats['language_count']))
+    html = html.replace("{{ONOMATOPOEIA_COUNT}}", str(stats['total_onomatopoeia']))
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html)
     size = os.path.getsize(output_path)
     print(f"  {output_path.name}: {size:,} bytes")
+
+
+def _parse_svg_points(svg_path):
+    """Extract polygon points from favicon SVG path data."""
+    import re
+    with open(svg_path, "r", encoding="utf-8") as f:
+        svg = f.read()
+    match = re.search(r'd="([^"]+)"', svg)
+    if not match:
+        return []
+    coords = re.findall(r"[\d.]+", match.group(1))
+    return [(float(coords[i]), float(coords[i + 1])) for i in range(0, len(coords), 2)]
+
+
+def _find_cjk_font():
+    """Find a CJK-capable font across platforms."""
+    import sys as _sys
+    candidates = (
+        # Windows
+        ["C:/Windows/Fonts/meiryo.ttc", "C:/Windows/Fonts/msgothic.ttc"]
+        if _sys.platform == "win32" else
+        # Linux (GitHub Actions Ubuntu)
+        ["/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+         "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+         "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc"]
+    )
+    for path in candidates:
+        if Path(path).exists():
+            return path
+    return None
 
 
 def generate_ogp(stats, output_path):
@@ -262,37 +289,21 @@ def generate_ogp(stats, output_path):
         draw.line([(0, y), (W, y)], fill=(r, g, b))
 
     # Cat silhouette from favicon.svg
-    raw_points = [
-        (32.0, 15.0), (36.1, 15.1), (38.6, 15.5), (40.6, 15.8),
-        (42.1, 15.5), (43.3, 14.2), (45.0, 12.4), (46.6, 11.0),
-        (50.8, 7.1), (53.4, 4.8), (56.9, 3.3), (59.0, 3.2),
-        (60.6, 4.8), (61.3, 7.0), (61.8, 9.6), (62.0, 12.9),
-        (61.9, 17.6), (61.4, 23.6), (60.2, 29.6), (60.4, 32.1),
-        (61.2, 35.0), (61.8, 38.9), (61.0, 44.9), (58.5, 50.4),
-        (55.2, 54.1), (52.3, 56.2), (49.2, 57.8), (45.9, 59.1),
-        (42.9, 59.9), (39.7, 60.5), (36.6, 60.7), (34.0, 60.8),
-        (32.0, 60.8),
-        (30.0, 60.8), (27.4, 60.7), (24.3, 60.5),
-        (21.1, 59.9), (18.1, 59.1), (14.8, 57.8), (11.7, 56.2),
-        (8.8, 54.1), (5.5, 50.4), (3.0, 44.9), (2.2, 38.9),
-        (2.8, 35.0), (3.6, 32.1), (3.8, 29.6), (2.6, 23.6),
-        (2.1, 17.6), (2.0, 12.9), (2.2, 9.6), (2.7, 7.0),
-        (3.4, 4.8), (5.0, 3.2), (7.1, 3.3), (10.6, 4.8),
-        (13.2, 7.1), (17.4, 11.0), (19.0, 12.4), (20.7, 14.2),
-        (21.9, 15.5), (23.4, 15.8), (25.4, 15.5), (27.9, 15.1),
-        (32.0, 15.0),
-    ]
-    cx, cy, size = 200, 315, 280
-    scale = size / 64.0
-    points = [(cx + (x - 32) * scale, cy + (y - 38) * scale) for x, y in raw_points]
-    draw.polygon(points, fill=(91, 74, 122))
+    favicon = ASSETS_DIR / "favicon.svg"
+    raw_points = _parse_svg_points(favicon) if favicon.exists() else []
+    if raw_points:
+        cx, cy, cat_size = 200, 315, 280
+        scale = cat_size / 64.0
+        points = [(cx + (x - 32) * scale, cy + (y - 38) * scale) for x, y in raw_points]
+        draw.polygon(points, fill=(91, 74, 122))
 
     # Fonts
-    try:
-        title_font = ImageFont.truetype("C:/Windows/Fonts/meiryo.ttc", 52)
-        sub_font = ImageFont.truetype("C:/Windows/Fonts/meiryo.ttc", 24)
-        en_font = ImageFont.truetype("C:/Windows/Fonts/meiryo.ttc", 20)
-    except (OSError, IOError):
+    font_path = _find_cjk_font()
+    if font_path:
+        title_font = ImageFont.truetype(font_path, 52)
+        sub_font = ImageFont.truetype(font_path, 24)
+        en_font = ImageFont.truetype(font_path, 20)
+    else:
         title_font = ImageFont.load_default()
         sub_font = ImageFont.load_default()
         en_font = ImageFont.load_default()
@@ -367,7 +378,7 @@ def main():
     generate_sitemap(animals, DIST_DIR / "sitemap.xml")
 
     # CNAME for GitHub Pages custom domain
-    cname_domain = SITE_URL.replace("https://", "").replace("http://", "").rstrip("/")
+    cname_domain = urlparse(SITE_URL).netloc
     with open(DIST_DIR / "CNAME", "w") as f:
         f.write(cname_domain + "\n")
     print(f"  CNAME: {cname_domain}")

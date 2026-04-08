@@ -5,18 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>動物の鳴き声図鑑 | Animal Sound Encyclopedia</title>
 <meta name="google-site-verification" content="O6oFrJyEg-Om0e19Q1QZpGG3DeKfy0ggL_tQWnAaWgI" />
-<meta name="description" content="世界の動物305種の鳴き声オノマトペを日本語・英語・韓国語・中国語で検索できる図鑑">
+<meta name="description" content="世界の動物{{SPECIES_COUNT}}種の鳴き声オノマトペを日本語・英語・韓国語・中国語で検索できる図鑑">
 <meta property="og:title" content="動物の鳴き声図鑑 | Animal Sound Encyclopedia">
-<meta property="og:description" content="世界の動物305種の鳴き声オノマトペを日本語・英語・韓国語・中国語で検索できる図鑑">
+<meta property="og:description" content="世界の動物{{SPECIES_COUNT}}種の鳴き声オノマトペを日本語・英語・韓国語・中国語で検索できる図鑑">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://koe-zukan.semnil.com/">
-<meta property="og:image" content="https://koe-zukan.semnil.com/ogp.png">
+<meta property="og:url" content="{{SITE_URL}}/">
+<meta property="og:image" content="{{SITE_URL}}/ogp.png">
 <meta property="og:locale" content="ja_JP">
 <meta property="og:site_name" content="動物の鳴き声図鑑">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="動物の鳴き声図鑑 | Animal Sound Encyclopedia">
-<meta name="twitter:description" content="世界の動物305種の鳴き声オノマトペを日本語・英語・韓国語・中国語で検索できる図鑑">
-<meta name="twitter:image" content="https://koe-zukan.semnil.com/ogp.png">
+<meta name="twitter:description" content="世界の動物{{SPECIES_COUNT}}種の鳴き声オノマトペを日本語・英語・韓国語・中国語で検索できる図鑑">
+<meta name="twitter:image" content="{{SITE_URL}}/ogp.png">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js"></script>
 <style>
@@ -382,7 +382,7 @@ footer {
 
 <header>
   <h1>動物の鳴き声図鑑</h1>
-  <p>Animal Sound Encyclopedia &mdash; 258 species / 4 languages</p>
+  <p>Animal Sound Encyclopedia &mdash; {{SPECIES_COUNT}} species / {{LANGUAGE_COUNT}} languages</p>
 </header>
 
 <div class="search-area">
@@ -409,7 +409,7 @@ footer {
 
 <footer>
   <p>Specifications were collected with the assistance of AI and may contain errors. Please verify with official sources.</p>
-  <p>動物の鳴き声図鑑 &copy; 2026 &mdash; Data: 258 species, 572 onomatopoeia entries across 4 languages</p>
+  <p>動物の鳴き声図鑑 &copy; 2026 &mdash; Data: {{SPECIES_COUNT}} species, {{ONOMATOPOEIA_COUNT}} onomatopoeia entries across {{LANGUAGE_COUNT}} languages</p>
 </footer>
 
 <script>
@@ -592,7 +592,7 @@ function renderResults(results) {
       onoHTML = `<div class="ono-display"><div class="ono-main no-voice">鳴き声なし</div></div>`;
     }
 
-    return `<div class="card" onclick="openModal('${a.id}')">
+    return `<div class="card" onclick="openModal('${esc(a.id)}')">
       <div class="card-header">
         <div>
           <div class="card-name">${esc(a.nameJA)}</div>
@@ -685,7 +685,7 @@ function closeModal(pushState = true) {
 
 function esc(s) {
   if (!s) return "";
-  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
 
 init();
