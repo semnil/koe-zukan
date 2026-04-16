@@ -10,11 +10,14 @@
 <meta property="og:type" content="article">
 <meta property="og:url" content="{{SITE_URL}}/species/{{ID}}/">
 <meta property="og:image" content="{{SITE_URL}}/species/{{ID}}/ogp.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta property="og:locale" content="ja_JP">
 <meta property="og:site_name" content="動物の鳴き声図鑑">
-<meta name="twitter:card" content="summary">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{{NAME_JA}} ({{NAME_EN}}) — 動物の鳴き声図鑑">
 <meta name="twitter:description" content="{{DESCRIPTION}}">
+<meta name="twitter:image" content="{{SITE_URL}}/species/{{ID}}/ogp.png">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="canonical" href="{{SITE_URL}}/species/{{ID}}/">
 <style>
@@ -95,9 +98,9 @@ body {
   padding: 0.5rem;
   text-align: center;
 }
-.ono-cell-lang { font-size: 0.65rem; color: var(--text2); margin-bottom: 0.2rem; }
+.ono-cell-lang { font-size: 0.7rem; color: var(--text2); margin-bottom: 0.2rem; }
 .ono-cell-text { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
-.ono-cell-scene { font-size: 0.6rem; color: #a8a29e; margin-top: 0.15rem; }
+.ono-cell-scene { font-size: 0.65rem; color: #a8a29e; margin-top: 0.15rem; }
 .detail-row {
   display: flex;
   justify-content: space-between;
@@ -167,13 +170,17 @@ footer {
 @media (max-width: 480px) {
   .ono-grid { grid-template-columns: repeat(2, 1fr); }
 }
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 </style>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "Article",
-  "headline": "{{NAME_JA}} ({{NAME_EN}})",
-  "description": "{{DESCRIPTION}}",
+  "headline": "{{JSON_HEADLINE}}",
+  "description": "{{JSON_DESCRIPTION}}",
   "url": "{{SITE_URL}}/species/{{ID}}/",
   "publisher": {
     "@type": "Organization",
@@ -184,9 +191,9 @@ footer {
 </head>
 <body>
 
-<div class="top-bar">
+<nav class="top-bar" aria-label="サイトナビゲーション">
   <a href="/">← 動物の鳴き声図鑑</a>
-</div>
+</nav>
 
 <div class="species-page">
   <div class="species-card">
