@@ -213,12 +213,14 @@ def write_json(data, filepath):
     print(f"  {filepath.name}: {size:,} bytes")
 
 
-def _apply_placeholders(html, mapping):
+def _apply_placeholders(html, mapping, skip_warn=None):
     """Replace {{KEY}} placeholders in HTML with values from mapping dict."""
     import re
     for key, value in mapping.items():
         html = html.replace(f"{{{{{key}}}}}", str(value))
     remaining = re.findall(r"\{\{[A-Z_]+\}\}", html)
+    if skip_warn:
+        remaining = [r for r in remaining if r.strip("{}") not in skip_warn]
     if remaining:
         print(f"  WARNING: unreplaced placeholders: {remaining}")
     return html
@@ -489,7 +491,7 @@ def generate_species_pages(animals, dist_dir):
         if a.get("imageRef"):
             links.append(f'<a href="{esc(a["imageRef"])}" target="_blank" rel="noopener">📷 Wikimedia Commons</a>')
         if a.get("audioRef"):
-            audio_label = "xeno-canto" if aid.startswith(("A", "B")) else "Macaulay Library"
+            audio_label = "xeno-canto" if aid.startswith("B") else "Macaulay Library"
             links.append(f'<a href="{esc(a["audioRef"])}" target="_blank" rel="noopener">🔊 {audio_label}</a>')
         links.append(f'<a href="https://ja.wikipedia.org/wiki/{quote(a["nameJA"], safe="")}" target="_blank" rel="noopener">📖 Wikipedia (JA)</a>')
         if a.get("nameEN"):
@@ -506,6 +508,10 @@ def generate_species_pages(animals, dist_dir):
         alt_en = a.get("altEN", "")
         note = a.get("note", "")
         note_html = f'<div class="detail-row"><span class="detail-label">備考</span><span>{esc(note)}</span></div>' if note else ""
+        # JSON-safe values for JSON-LD (no HTML escaping, use json.dumps for proper escaping)
+        json_headline_text = f"{a['nameJA']} ({a.get('nameEN', '')})" if a.get('nameEN') else a['nameJA']
+        json_headline = json.dumps(json_headline_text, ensure_ascii=False)[1:-1]
+        json_desc = json.dumps(desc, ensure_ascii=False)[1:-1]
         page = _apply_placeholders(template, {
             "SITE_URL": SITE_URL,
             "ID": esc(aid),
@@ -523,7 +529,9 @@ def generate_species_pages(animals, dist_dir):
             "DESCRIPTION": esc(desc),
             "ONO_SECTION": ono_section,
             "LINKS": links_html,
-        })
+            "JSON_HEADLINE": json_headline,
+            "JSON_DESCRIPTION": json_desc,
+        }, skip_warn={"SHARE_BUTTONS"})
 
         # Share buttons
         share_url = f"{SITE_URL}/species/{aid}/"
@@ -622,7 +630,10 @@ self.addEventListener("fetch", e => {{
         caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
       }}
       return resp;
-    }})).catch(() => caches.match("/"))
+    }})).catch(() => {{
+      if (e.request.mode === "navigate") return caches.match("/");
+      return new Response("", {{ status: 503 }});
+    }}))
   );
 }});
 """
@@ -702,7 +713,7 @@ def main():
 
     print()
     print(f"Build complete! {stats['total_species']} species → {DIST_DIR}/")
-    print(f"Deploy the contents of {DIST_DIR}/ to Cloudflare Pages.")
+    print(f"Deploy the contents of {DIST_DIR}/ to GitHub Pages.")
 
 
 if __name__ == "__main__":
