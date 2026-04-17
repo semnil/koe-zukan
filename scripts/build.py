@@ -276,7 +276,8 @@ def _parse_svg_points(svg_path):
     import re
     with open(svg_path, "r", encoding="utf-8") as f:
         svg = f.read()
-    match = re.search(r'd="([^"]+)"', svg)
+    # Anchor to the `d=` attribute so we don't accidentally match id="..." etc.
+    match = re.search(r'(?:^|[\s])d="([^"]+)"', svg)
     if not match:
         return []
     coords = re.findall(r"[\d.]+", match.group(1))
@@ -594,19 +595,71 @@ def generate_sitemap(animals, output_path):
     print(f"  {output_path.name}: {size:,} bytes ({len(urls)} URLs)")
 
 
-def generate_manifest(output_path):
+def generate_pwa_icons(dist_dir):
+    """Generate 192x192 and 512x512 PWA PNG icons from favicon.svg.
+
+    Chrome Android / Lighthouse PWA audit require raster PNG icons; the
+    SVG-only manifest is insufficient (UX audit M8). Mirrors the favicon
+    palette (#047857 → #064e3b) with the cat silhouette centered.
+    """
+    try:
+        from PIL import Image, ImageDraw
+    except ImportError:
+        print("  WARNING: Pillow not installed, skipping PWA icons")
+        return []
+
+    favicon = ASSETS_DIR / "favicon.svg"
+    raw_points = _parse_svg_points(favicon) if favicon.exists() else []
+
+    outputs = []
+    for size in (192, 512):
+        img = Image.new("RGB", (size, size), (4, 120, 87))
+        draw = ImageDraw.Draw(img)
+        # Diagonal gradient #047857 → #064e3b (matches favicon.svg).
+        for y in range(size):
+            t = y / max(size - 1, 1)
+            r = int(4 + (6 - 4) * t)
+            g = int(120 + (78 - 120) * t)
+            b = int(87 + (59 - 87) * t)
+            draw.line([(0, y), (size, y)], fill=(r, g, b))
+        if raw_points:
+            # SVG viewBox is 64x64; scale to 80% of the icon with the cat
+            # centered on the icon center.
+            scale = size * 0.8 / 64.0
+            cx = size / 2
+            cy = size / 2
+            points = [(cx + (x - 32) * scale, cy + (y - 32) * scale) for x, y in raw_points]
+            draw.polygon(points, fill=(255, 255, 255))
+        out = dist_dir / f"icon-{size}.png"
+        img.save(out, "PNG", optimize=True)
+        print(f"  {out.name}: {os.path.getsize(out):,} bytes")
+        outputs.append(size)
+    return outputs
+
+
+def generate_manifest(output_path, icon_sizes=None):
     """Generate PWA manifest.json."""
+    icons = [
+        {"src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any"}
+    ]
+    for size in (icon_sizes or ()):
+        icons.append({
+            "src": f"/icon-{size}.png",
+            "type": "image/png",
+            "sizes": f"{size}x{size}",
+            "purpose": "any maskable",
+        })
     manifest = {
         "name": "動物の鳴き声図鑑",
         "short_name": "鳴き声図鑑",
         "description": "多言語対応の動物オノマトペ検索サイト",
+        "lang": "ja",
+        "scope": "/",
         "start_url": "/",
         "display": "standalone",
         "background_color": "#fafaf9",
-        "theme_color": "#059669",
-        "icons": [
-            {"src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any"}
-        ],
+        "theme_color": "#047857",
+        "icons": icons,
     }
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
@@ -652,7 +705,7 @@ self.addEventListener("fetch", e => {{
     }})).catch(() => {{
       if (e.request.mode === "navigate") return caches.match("/");
       return new Response("", {{ status: 503 }});
-    }}))
+    }})
   );
 }});
 """
@@ -718,7 +771,8 @@ def main():
 
     # Generate PWA files
     print("Generating PWA files...")
-    generate_manifest(DIST_DIR / "manifest.json")
+    icon_sizes = generate_pwa_icons(DIST_DIR)
+    generate_manifest(DIST_DIR / "manifest.json", icon_sizes)
     generate_sw(animals, DIST_DIR / "sw.js")
 
     # Copy assets
