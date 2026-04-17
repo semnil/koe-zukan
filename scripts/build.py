@@ -316,13 +316,14 @@ def _ogp_base_image():
         return None
 
     W, H = 1200, 630
-    img = Image.new("RGB", (W, H), (42, 38, 52))
+    # Green-tinted near-black gradient matching the site accent (#047857/#064e3b).
+    img = Image.new("RGB", (W, H), (8, 44, 34))
     draw = ImageDraw.Draw(img)
 
     for y in range(H):
-        r = int(42 + (58 - 42) * y / H)
-        g = int(38 + (48 - 38) * y / H)
-        b = int(52 + (68 - 52) * y / H)
+        r = int(8 + (22 - 8) * y / H)
+        g = int(44 + (66 - 44) * y / H)
+        b = int(34 + (54 - 34) * y / H)
         draw.line([(0, y), (W, y)], fill=(r, g, b))
 
     favicon = ASSETS_DIR / "favicon.svg"
@@ -331,7 +332,8 @@ def _ogp_base_image():
         cx, cy, cat_size = 200, 315, 280
         scale = cat_size / 64.0
         points = [(cx + (x - 32) * scale, cy + (y - 38) * scale) for x, y in raw_points]
-        draw.polygon(points, fill=(91, 74, 122))
+        # Emerald-600 fill for the cat silhouette.
+        draw.polygon(points, fill=(5, 150, 105))
 
     return img
 
@@ -462,6 +464,19 @@ CONSERVATION_JA = {
 
 LANG_LABELS = {"ja": "日本語", "en": "English", "ko": "한국어", "zh": "中文"}
 
+# Matches CLASS_INFO in templates/index.html so cards and species pages show
+# the same class-specific tag color / icon (UX audit M5).
+CLASS_INFO = {
+    "鳥綱":     {"en": "Birds",       "icon": "🐦", "css": "class-bird"},
+    "哺乳綱":   {"en": "Mammals",     "icon": "🐾", "css": "class-mammal"},
+    "昆虫綱":   {"en": "Insects",     "icon": "🦗", "css": "class-insect"},
+    "両生綱":   {"en": "Amphibians",  "icon": "🐸", "css": "class-amphibian"},
+    "爬虫綱":   {"en": "Reptiles",    "icon": "🦎", "css": "class-reptile"},
+    "硬骨魚綱": {"en": "Fish",        "icon": "🐟", "css": "class-fish"},
+    "甲殻綱":   {"en": "Crustaceans", "icon": "🦀", "css": "class-other"},
+    "二枚貝綱": {"en": "Bivalves",    "icon": "🐚", "css": "class-other"},
+}
+
 
 def generate_species_pages(animals, dist_dir):
     """Generate individual HTML pages for each species at /species/{id}/index.html."""
@@ -482,10 +497,11 @@ def generate_species_pages(animals, dist_dir):
         for o in a["onomatopoeia"]:
             if o["onomatopoeia"]:
                 lang_label = esc(LANG_LABELS.get(o["lang"], o["lang"]))
+                lang_attr = esc(o["lang"])
                 ono_html_parts.append(
                     f'<div class="ono-cell">'
                     f'<div class="ono-cell-lang">{lang_label}</div>'
-                    f'<div class="ono-cell-text">{esc(o["onomatopoeia"])}</div>'
+                    f'<div class="ono-cell-text" lang="{lang_attr}">{esc(o["onomatopoeia"])}</div>'
                     f'{"<div class=\"ono-cell-scene\">" + esc(o["scene"]) + "</div>" if o["scene"] else ""}'
                     f'</div>'
                 )
@@ -504,16 +520,37 @@ def generate_species_pages(animals, dist_dir):
         # Regions
         regions_text = "、".join(esc(r["nameJA"]) for r in a["regions"]) or esc(a.get("habitat", ""))
 
-        # External links
+        # External links. aria-label announces "new tab" for screen readers;
+        # emoji is decorative (aria-hidden) per WAI guidance. `↗` marks the
+        # visual affordance for sighted users (UX audit M4).
+        ext = '<span class="ext-mark" aria-hidden="true">↗</span>'
         links = []
         if a.get("imageRef"):
-            links.append(f'<a href="{esc(a["imageRef"])}" target="_blank" rel="noopener">📷 Wikimedia Commons</a>')
+            links.append(
+                f'<a href="{esc(a["imageRef"])}" target="_blank" rel="noopener" '
+                f'aria-label="Wikimedia Commons (新しいタブで開く)">'
+                f'<span aria-hidden="true">📷</span> Wikimedia Commons {ext}</a>'
+            )
         if a.get("audioRef"):
             audio_label = "xeno-canto" if aid.startswith("B") else "Macaulay Library"
-            links.append(f'<a href="{esc(a["audioRef"])}" target="_blank" rel="noopener">🔊 {audio_label}</a>')
-        links.append(f'<a href="https://ja.wikipedia.org/wiki/{quote(a["nameJA"], safe="")}" target="_blank" rel="noopener">📖 Wikipedia (JA)</a>')
+            links.append(
+                f'<a href="{esc(a["audioRef"])}" target="_blank" rel="noopener" '
+                f'aria-label="{audio_label} (新しいタブで開く)">'
+                f'<span aria-hidden="true">🔊</span> {audio_label} {ext}</a>'
+            )
+        links.append(
+            f'<a href="https://ja.wikipedia.org/wiki/{quote(a["nameJA"], safe="")}" '
+            f'target="_blank" rel="noopener" '
+            f'aria-label="Wikipedia 日本語版 (新しいタブで開く)">'
+            f'<span aria-hidden="true">📖</span> Wikipedia (JA) {ext}</a>'
+        )
         if a.get("nameEN"):
-            links.append(f'<a href="https://en.wikipedia.org/wiki/{quote(a["nameEN"], safe="")}" target="_blank" rel="noopener">📖 Wikipedia (EN)</a>')
+            links.append(
+                f'<a href="https://en.wikipedia.org/wiki/{quote(a["nameEN"], safe="")}" '
+                f'target="_blank" rel="noopener" '
+                f'aria-label="Wikipedia English (opens in new tab)">'
+                f'<span aria-hidden="true">📖</span> Wikipedia (EN) {ext}</a>'
+            )
         links_html = "\n".join(links)
 
         # Description for meta
@@ -532,6 +569,7 @@ def generate_species_pages(animals, dist_dir):
         json_headline_text = f"{a['nameJA']} ({a.get('nameEN', '')})" if a.get('nameEN') else a['nameJA']
         json_headline = _json_for_script(json_headline_text)
         json_desc = _json_for_script(desc)
+        class_info = CLASS_INFO.get(a.get("class", ""), {"icon": "🔹", "css": "class-other"})
         page = _apply_placeholders(template, {
             "SITE_URL": SITE_URL,
             "ID": esc(aid),
@@ -540,6 +578,8 @@ def generate_species_pages(animals, dist_dir):
             "SCIENTIFIC_NAME": esc(a.get("scientificName", "")),
             "ALT_EN": f" ({esc(alt_en)})" if alt_en else "",
             "CLASS": esc(a.get("class", "")),
+            "CLASS_CSS": class_info["css"],
+            "CLASS_ICON": class_info["icon"],
             "ORDER": esc(a.get("order", "")),
             "FAMILY": esc(a.get("family", "")),
             "VOICE_METHOD": esc(a.get("voiceMethod", "") or "—"),
@@ -559,10 +599,10 @@ def generate_species_pages(animals, dist_dir):
         eu = quote(share_url, safe="")
         et = quote(share_text, safe="")
         share_html = (
-            f'<a class="share-btn" href="https://twitter.com/intent/tweet?text={et}&url={eu}" target="_blank" rel="noopener">\U0001d54f Post</a>'
-            f'<a class="share-btn" href="https://www.facebook.com/sharer/sharer.php?u={eu}" target="_blank" rel="noopener">Facebook</a>'
-            f'<a class="share-btn" href="https://social-plugins.line.me/lineit/share?url={eu}" target="_blank" rel="noopener">LINE</a>'
-            f'<button class="share-btn" onclick="copyShareUrl(\'{esc(share_url)}\', this)">\U0001f4cb URL\u3092\u30b3\u30d4\u30fc</button>'
+            f'<a class="share-btn" href="https://twitter.com/intent/tweet?text={et}&url={eu}" target="_blank" rel="noopener" aria-label="X (Twitter) \u3067\u5171\u6709 (\u65b0\u3057\u3044\u30bf\u30d6)">X Post</a>'
+            f'<a class="share-btn" href="https://www.facebook.com/sharer/sharer.php?u={eu}" target="_blank" rel="noopener" aria-label="Facebook \u3067\u5171\u6709 (\u65b0\u3057\u3044\u30bf\u30d6)">Facebook</a>'
+            f'<a class="share-btn" href="https://social-plugins.line.me/lineit/share?url={eu}" target="_blank" rel="noopener" aria-label="LINE \u3067\u5171\u6709 (\u65b0\u3057\u3044\u30bf\u30d6)">LINE</a>'
+            f'<button type="button" class="share-btn" data-copy-url="{esc(share_url)}"><span aria-hidden="true">\U0001f4cb</span> URL\u3092\u30b3\u30d4\u30fc</button>'
         )
         page = page.replace("{{SHARE_BUTTONS}}", share_html)
 

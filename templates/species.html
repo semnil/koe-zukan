@@ -20,16 +20,30 @@
 <meta name="twitter:image" content="{{SITE_URL}}/species/{{ID}}/ogp.png">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="canonical" href="{{SITE_URL}}/species/{{ID}}/">
+<link rel="alternate" hreflang="ja" href="{{SITE_URL}}/?lang=ja&amp;id={{ID}}">
+<link rel="alternate" hreflang="en" href="{{SITE_URL}}/?lang=en&amp;id={{ID}}">
+<link rel="alternate" hreflang="ko" href="{{SITE_URL}}/?lang=ko&amp;id={{ID}}">
+<link rel="alternate" hreflang="zh" href="{{SITE_URL}}/?lang=zh&amp;id={{ID}}">
+<link rel="alternate" hreflang="x-default" href="{{SITE_URL}}/species/{{ID}}/">
 <style>
 :root {
   --bg: #fafaf9;
   --card: #ffffff;
   --text: #1c1917;
   --text2: #57534e;
-  --accent: #059669;
+  --muted: #78716c;
+  --accent: #047857;
+  --accent-dark: #065f46;
   --accent-light: #d1fae5;
   --border: #e7e5e4;
   --hover: #f5f5f4;
+  --tag-bird: #dbeafe;
+  --tag-mammal: #fce7f3;
+  --tag-insect: #fef9c3;
+  --tag-amphibian: #d1fae5;
+  --tag-reptile: #e0e7ff;
+  --tag-fish: #cffafe;
+  --tag-other: #f3e8ff;
   --radius: 10px;
   --shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
@@ -40,8 +54,21 @@ body {
   color: var(--text);
   line-height: 1.6;
 }
+.skip-link {
+  position: absolute;
+  left: 0.5rem;
+  top: -3rem;
+  background: var(--accent-dark);
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  text-decoration: none;
+  z-index: 200;
+  font-size: 0.9rem;
+}
+.skip-link:focus { top: 0.5rem; }
 .top-bar {
-  background: linear-gradient(135deg, #065f46 0%, #059669 100%);
+  background: linear-gradient(135deg, #064e3b 0%, #047857 100%);
   padding: 0.75rem 1rem;
 }
 .top-bar a {
@@ -76,6 +103,13 @@ body {
   color: var(--accent);
   margin-bottom: 0.5rem;
 }
+.class-bird { background: var(--tag-bird); color: #1e40af; }
+.class-mammal { background: var(--tag-mammal); color: #be185d; }
+.class-insect { background: var(--tag-insect); color: #a16207; }
+.class-amphibian { background: var(--tag-amphibian); color: #047857; }
+.class-reptile { background: var(--tag-reptile); color: #4338ca; }
+.class-fish { background: var(--tag-fish); color: #0e7490; }
+.class-other { background: var(--tag-other); color: #7c3aed; }
 .detail-section {
   margin: 1rem 0;
   padding-top: 0.75rem;
@@ -100,7 +134,7 @@ body {
 }
 .ono-cell-lang { font-size: 0.7rem; color: var(--text2); margin-bottom: 0.2rem; }
 .ono-cell-text { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
-.ono-cell-scene { font-size: 0.65rem; color: #a8a29e; margin-top: 0.15rem; }
+.ono-cell-scene { font-size: 0.7rem; color: var(--text2); margin-top: 0.15rem; }
 .detail-row {
   display: flex;
   justify-content: space-between;
@@ -118,6 +152,7 @@ body {
   text-decoration: none;
 }
 .detail-links a:hover { text-decoration: underline; }
+.detail-links .ext-mark { font-size: 0.75rem; opacity: 0.7; }
 .share-section {
   margin-top: 1rem;
   padding-top: 0.75rem;
@@ -164,8 +199,8 @@ footer {
   margin: 0 auto;
   padding: 1.5rem 1rem;
   text-align: center;
-  font-size: 0.72rem;
-  color: #a8a29e;
+  font-size: 0.8rem;
+  color: var(--text2);
 }
 @media (max-width: 480px) {
   .ono-grid { grid-template-columns: repeat(2, 1fr); }
@@ -191,16 +226,18 @@ footer {
 </head>
 <body>
 
+<a href="#main" class="skip-link">コンテンツへスキップ</a>
+
 <nav class="top-bar" aria-label="サイトナビゲーション">
   <a href="/">← 動物の鳴き声図鑑</a>
 </nav>
 
-<div class="species-page">
+<main id="main" class="species-page">
   <div class="species-card">
-    <span class="class-tag">{{CLASS}} / {{ORDER}} / {{FAMILY}}</span>
+    <span class="class-tag {{CLASS_CSS}}">{{CLASS_ICON}} {{CLASS}} / {{ORDER}} / {{FAMILY}}</span>
     <h1>{{NAME_JA}}</h1>
-    <div class="en-name">{{NAME_EN}}{{ALT_EN}}</div>
-    <div class="sci">{{SCIENTIFIC_NAME}}</div>
+    <div class="en-name" lang="en">{{NAME_EN}}{{ALT_EN}}</div>
+    <div class="sci" lang="la">{{SCIENTIFIC_NAME}}</div>
 
     {{ONO_SECTION}}
 
@@ -228,19 +265,23 @@ footer {
   </div>
 
   <a href="/?id={{ID}}" class="back-link">← 図鑑で表示</a>
-</div>
+</main>
 
 <script>
 function copyShareUrl(url, btn) {
   navigator.clipboard.writeText(url).then(function() {
     btn.classList.add("copied");
     btn.textContent = "\u2713 コピーしました";
-    setTimeout(function() { btn.classList.remove("copied"); btn.textContent = "\ud83d\udccb URLをコピー"; }, 2000);
+    setTimeout(function() { btn.classList.remove("copied"); btn.innerHTML = '<span aria-hidden="true">\ud83d\udccb</span> URLをコピー'; }, 2000);
   }).catch(function() {
     btn.textContent = "コピー失敗";
-    setTimeout(function() { btn.textContent = "\ud83d\udccb URLをコピー"; }, 2000);
+    setTimeout(function() { btn.innerHTML = '<span aria-hidden="true">\ud83d\udccb</span> URLをコピー'; }, 2000);
   });
 }
+document.addEventListener("click", function(e) {
+  var btn = e.target.closest("[data-copy-url]");
+  if (btn) copyShareUrl(btn.dataset.copyUrl, btn);
+});
 </script>
 
 <footer>

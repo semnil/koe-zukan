@@ -21,6 +21,11 @@
 <meta name="twitter:image" content="{{SITE_URL}}/ogp.png">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="manifest.json">
+<link rel="alternate" hreflang="ja" href="{{SITE_URL}}/?lang=ja">
+<link rel="alternate" hreflang="en" href="{{SITE_URL}}/?lang=en">
+<link rel="alternate" hreflang="ko" href="{{SITE_URL}}/?lang=ko">
+<link rel="alternate" hreflang="zh" href="{{SITE_URL}}/?lang=zh">
+<link rel="alternate" hreflang="x-default" href="{{SITE_URL}}/">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js"></script>
 <style>
 :root {
@@ -28,7 +33,9 @@
   --card: #ffffff;
   --text: #1c1917;
   --text2: #57534e;
-  --accent: #059669;
+  --muted: #78716c;
+  --accent: #047857;
+  --accent-dark: #065f46;
   --accent-light: #d1fae5;
   --border: #e7e5e4;
   --hover: #f5f5f4;
@@ -52,9 +59,31 @@ body {
   line-height: 1.6;
 }
 
+/* Skip link for keyboard users (WCAG 2.4.1) */
+.skip-link {
+  position: absolute;
+  left: 0.5rem;
+  top: -3rem;
+  background: var(--accent-dark);
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  text-decoration: none;
+  z-index: 200;
+  font-size: 0.9rem;
+}
+.skip-link:focus { top: 0.5rem; }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
 /* Header */
 header {
-  background: linear-gradient(135deg, #065f46 0%, #059669 100%);
+  background: linear-gradient(135deg, #064e3b 0%, #047857 100%);
   color: white;
   padding: 2rem 1rem 1.5rem;
   text-align: center;
@@ -94,6 +123,7 @@ header p {
 }
 .search-input-wrap:focus-within {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(4,120,87,0.25);
 }
 .search-input-wrap svg { flex-shrink: 0; color: var(--text2); }
 .search-input {
@@ -104,7 +134,24 @@ header p {
   background: transparent;
   font-family: inherit;
 }
-.search-input::placeholder { color: #a8a29e; }
+.search-input::placeholder { color: var(--text2); }
+.search-clear {
+  display: none;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  border-radius: 4px;
+  font-family: inherit;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.search-clear:hover { background: var(--hover); }
+.search-clear.visible { display: inline-flex; }
 .search-hint {
   margin-top: 0.5rem;
   font-size: 0.75rem;
@@ -119,10 +166,10 @@ header p {
   margin-top: 0.75rem;
 }
 .filter-btn {
-  padding: 0.45rem 0.75rem;
-  min-height: 36px;
+  padding: 0.6rem 0.85rem;
+  min-height: 44px;
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 22px;
   background: var(--card);
   font-size: 0.78rem;
   cursor: pointer;
@@ -153,8 +200,8 @@ header p {
   gap: 0.3rem;
 }
 .lang-tab {
-  padding: 0.35rem 0.6rem;
-  min-height: 32px;
+  padding: 0.55rem 0.75rem;
+  min-height: 44px;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--card);
@@ -217,7 +264,7 @@ header p {
 }
 .card-sci {
   font-size: 0.75rem;
-  color: #a8a29e;
+  color: var(--muted);
   font-style: italic;
   margin-bottom: 0.5rem;
 }
@@ -251,6 +298,7 @@ header p {
 .ono-sub {
   font-size: 0.78rem;
   color: var(--text2);
+  font-weight: 500;
   margin-top: 0.15rem;
 }
 .card-meta {
@@ -267,7 +315,7 @@ header p {
   border-radius: 4px;
 }
 .no-voice {
-  color: #a8a29e;
+  color: var(--text2);
   font-style: italic;
 }
 
@@ -295,13 +343,27 @@ header p {
 }
 .modal-close {
   position: absolute;
-  top: 0.75rem; right: 0.75rem;
+  top: 0.5rem; right: 0.5rem;
+  width: 44px;
+  height: 44px;
   background: none;
   border: none;
-  font-size: 1.5rem;
   cursor: pointer;
   color: var(--text2);
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  padding: 0;
+}
+.modal-close:hover { background: var(--hover); }
+.modal-hint {
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--text2);
+  text-align: center;
+  border-top: 1px solid var(--border);
 }
 .modal h2 { font-size: 1.3rem; margin-bottom: 0.25rem; }
 .modal .sci { font-style: italic; color: var(--text2); font-size: 0.85rem; }
@@ -339,8 +401,8 @@ header p {
   color: var(--accent);
 }
 .ono-cell-scene {
-  font-size: 0.65rem;
-  color: #a8a29e;
+  font-size: 0.7rem;
+  color: var(--text2);
   margin-top: 0.15rem;
 }
 .detail-row {
@@ -360,6 +422,7 @@ header p {
   text-decoration: none;
 }
 .detail-links a:hover { text-decoration: underline; }
+.detail-links .ext-mark { font-size: 0.75rem; opacity: 0.7; }
 
 /* Responsive */
 @media (max-width: 480px) {
@@ -418,8 +481,8 @@ footer {
   margin: 0 auto;
   padding: 1.5rem 1rem;
   text-align: center;
-  font-size: 0.72rem;
-  color: #a8a29e;
+  font-size: 0.8rem;
+  color: var(--text2);
   border-top: 1px solid var(--border);
 }
 
@@ -432,28 +495,36 @@ footer {
 </head>
 <body>
 
+<a href="#main" class="skip-link">コンテンツへスキップ</a>
+
 <header>
   <h1>動物の鳴き声図鑑</h1>
   <p>Animal Sound Encyclopedia &mdash; {{SPECIES_COUNT}} species / {{LANGUAGE_COUNT}} languages</p>
 </header>
 
+<main id="main">
 <div class="search-area">
-  <div class="search-box">
+  <form class="search-box" role="search" onsubmit="event.preventDefault()">
+    <label for="searchInput" class="sr-only">動物名・鳴き声・英名で検索</label>
     <div class="search-input-wrap">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       <input type="text" class="search-input" id="searchInput" aria-label="動物名・鳴き声・英名で検索" placeholder="動物名、鳴き声、英名で検索...  例: ワンワン / meow / カエル">
+      <button type="button" class="search-clear" id="searchClear" aria-label="検索語をクリア">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
     <p class="search-hint">和名・英名・学名・オノマトペ（日本語/英語/韓国語/中国語）であいまい検索できます</p>
     <div class="filters" id="classFilters" role="group" aria-label="動物分類フィルター"></div>
-  </div>
+  </form>
 </div>
 
 <div class="stats-bar">
-  <span id="resultCount"></span>
+  <span id="resultCount" aria-live="polite" aria-atomic="true"></span>
   <div class="lang-tabs" id="langTabs"></div>
 </div>
 
-<div class="results" id="results" aria-live="polite"></div>
+<div class="results" id="results"></div>
+</main>
 
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"></div>
@@ -477,6 +548,18 @@ const CLASS_INFO = {
 };
 
 const LANG_LABELS = { ja: "日本語", en: "English", ko: "한국어", zh: "中文" };
+const LANG_TITLES = {
+  ja: "動物の鳴き声図鑑 | Animal Sound Encyclopedia",
+  en: "Animal Sound Encyclopedia — 動物の鳴き声図鑑",
+  ko: "동물 울음소리 도감 — 動物の鳴き声図鑑",
+  zh: "动物叫声图鉴 — 動物の鳴き声図鑑",
+};
+const RESULT_COUNT_LABEL = {
+  ja: n => `${n} 件見つかりました`,
+  en: n => `${n} results`,
+  ko: n => `${n}건`,
+  zh: n => `${n} 件`,
+};
 const CONSERVATION = {
   "LC": "低懸念", "NT": "準絶滅危惧", "VU": "危急", "EN": "絶滅危惧",
   "CR": "深刻な危機", "DD": "データ不足", "NE": "未評価", "EW": "野生絶滅", "EX": "絶滅"
@@ -486,12 +569,22 @@ let animals = [];
 let fuse = null;
 let activeClass = null;
 let displayLang = (() => {
+  // URL ?lang= takes precedence over navigator.language so shared links
+  // preserve the sender's chosen display language (H5).
+  const urlLang = new URL(location).searchParams.get("lang");
+  if (urlLang && LANG_LABELS.hasOwnProperty(urlLang)) return urlLang;
   const lang = (navigator.language || "ja").toLowerCase();
   if (lang.startsWith("ko")) return "ko";
   if (lang.startsWith("zh")) return "zh";
   if (lang.startsWith("en")) return "en";
   return "ja";
 })();
+
+function applyDisplayLang(code) {
+  displayLang = code;
+  document.documentElement.lang = code;
+  document.title = LANG_TITLES[code] || LANG_TITLES.ja;
+}
 
 // Katakana to Hiragana conversion
 function kataToHira(str) {
@@ -543,16 +636,40 @@ async function init() {
     includeScore: true,
   });
 
-  document.documentElement.lang = displayLang;
+  applyDisplayLang(displayLang);
   renderFilters();
   renderLangTabs();
   renderResults(animals);
 
   const searchInput = document.getElementById("searchInput");
+  const searchClear = document.getElementById("searchClear");
   let isComposing = false;
+  function syncClearVisibility() {
+    searchClear.classList.toggle("visible", searchInput.value.length > 0);
+  }
+  const debouncedSearch = debounce(() => { if (!isComposing) onSearch(); }, 200);
   searchInput.addEventListener("compositionstart", () => { isComposing = true; });
   searchInput.addEventListener("compositionend", () => { isComposing = false; onSearch(); });
-  searchInput.addEventListener("input", debounce(() => { if (!isComposing) onSearch(); }, 200));
+  searchInput.addEventListener("input", () => {
+    syncClearVisibility();
+    debouncedSearch();
+  });
+  searchClear.addEventListener("click", () => {
+    searchInput.value = "";
+    syncClearVisibility();
+    onSearch();
+    searchInput.focus();
+  });
+  // Event delegation for card clicks (replaces inline onclick for CSP friendliness).
+  document.getElementById("results").addEventListener("click", e => {
+    const card = e.target.closest(".card");
+    if (card && card.dataset.id) openModal(card.dataset.id);
+  });
+  // Delegation for copy-URL share buttons (rendered dynamically in modal).
+  document.addEventListener("click", e => {
+    const btn = e.target.closest("[data-copy-url]");
+    if (btn) copyShareUrl(btn.dataset.copyUrl, btn);
+  });
   document.getElementById("modalOverlay").addEventListener("click", e => {
     if (e.target === e.currentTarget) closeModal();
   });
@@ -614,10 +731,13 @@ function renderLangTabs() {
     btn.textContent = label;
     btn.setAttribute("aria-pressed", String(code === displayLang));
     btn.onclick = () => {
-      displayLang = code;
-      document.documentElement.lang = code;
+      applyDisplayLang(code);
       updateLangTabs();
       renderCurrentResults();
+      // Reflect chosen language in URL so shared links preserve it (H5).
+      const url = new URL(location);
+      url.searchParams.set("lang", code);
+      history.replaceState(history.state || {}, "", url);
       // If modal is open, refresh its content
       const overlay = document.getElementById("modalOverlay");
       if (overlay.classList.contains("open")) {
@@ -671,7 +791,8 @@ function getOno(animal, lang) {
 function renderResults(results) {
   currentResults = results;
   const container = document.getElementById("results");
-  document.getElementById("resultCount").textContent = `${results.length} 件`;
+  const countFn = RESULT_COUNT_LABEL[displayLang] || RESULT_COUNT_LABEL.ja;
+  document.getElementById("resultCount").textContent = countFn(results.length);
 
   if (results.length === 0) {
     container.innerHTML = `
@@ -692,8 +813,8 @@ function renderResults(results) {
       const subLang = displayLang === "ja" ? "en" : "ja";
       const subOno = getOno(a, subLang) || (subLang === "ja" ? a.onomatopoeiaJA : "");
       onoHTML = `<div class="ono-display">
-        <div class="ono-main">${esc(ono)}</div>
-        ${subOno ? `<div class="ono-sub">${esc(LANG_LABELS[subLang])}: ${esc(subOno)}</div>` : ""}
+        <div class="ono-main" lang="${displayLang}">${esc(ono)}</div>
+        ${subOno ? `<div class="ono-sub" lang="${subLang}">${esc(LANG_LABELS[subLang])}: ${esc(subOno)}</div>` : ""}
       </div>`;
     } else if (hasVoice) {
       onoHTML = `<div class="ono-display"><div class="ono-main no-voice">(${esc(LANG_LABELS[displayLang])}データなし)</div></div>`;
@@ -701,15 +822,15 @@ function renderResults(results) {
       onoHTML = `<div class="ono-display"><div class="ono-main no-voice">鳴き声なし</div></div>`;
     }
 
-    return `<button type="button" class="card" onclick="openModal('${esc(a.id)}')">
+    return `<button type="button" class="card" data-id="${esc(a.id)}">
       <div class="card-header">
         <div>
           <div class="card-name">${esc(a.nameJA)}</div>
-          <div class="card-name-en">${esc(a.nameEN)}</div>
+          <div class="card-name-en" lang="en">${esc(a.nameEN)}</div>
         </div>
         <span class="class-tag ${ci.css}">${ci.icon} ${esc(a.class)}</span>
       </div>
-      <div class="card-sci">${esc(a.scientificName)}</div>
+      <div class="card-sci" lang="la">${esc(a.scientificName)}</div>
       ${onoHTML}
       <div class="card-meta">
         ${a.voiceMethod && a.voiceMethod !== "鳴き声なし" ? `<span class="meta-item">${esc(a.voiceMethod)}</span>` : ""}
@@ -743,12 +864,15 @@ function openModal(id, pushState = true) {
     onoByLang[o.lang].push(o);
   });
 
+  const audioLabel = a.id.match(/^B/) ? "xeno-canto" : "Macaulay Library";
   document.getElementById("modal").innerHTML = `
-    <button class="modal-close" onclick="closeModal()" aria-label="閉じる">&times;</button>
+    <button class="modal-close" id="modalCloseBtn" type="button" aria-label="閉じる (Esc キー)">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
     <span class="class-tag ${ci.css}">${ci.icon} ${esc(a.class)} / ${esc(a.order)} / ${esc(a.family)}</span>
     <h2 id="modal-title" style="margin-top:0.5rem">${esc(a.nameJA)}</h2>
-    <div class="en-name">${esc(a.nameEN)}${a.altEN ? ` (${esc(a.altEN)})` : ""}</div>
-    <div class="sci">${esc(a.scientificName)}</div>
+    <div class="en-name" lang="en">${esc(a.nameEN)}${a.altEN ? ` (${esc(a.altEN)})` : ""}</div>
+    <div class="sci" lang="la">${esc(a.scientificName)}</div>
 
     ${onoEntries.length > 0 ? `
     <div class="detail-section">
@@ -758,7 +882,7 @@ function openModal(id, pushState = true) {
           entries.map(o => `
             <div class="ono-cell">
               <div class="ono-cell-lang">${esc(LANG_LABELS[lang] || lang)}</div>
-              <div class="ono-cell-text">${esc(o.onomatopoeia)}</div>
+              <div class="ono-cell-text" lang="${esc(lang)}">${esc(o.onomatopoeia)}</div>
               ${o.scene ? `<div class="ono-cell-scene">${esc(o.scene)}</div>` : ""}
             </div>
           `).join("")
@@ -777,10 +901,10 @@ function openModal(id, pushState = true) {
     <div class="detail-section">
       <h3>外部リンク</h3>
       <div class="detail-links">
-        ${a.imageRef ? `<a href="${esc(a.imageRef)}" target="_blank" rel="noopener">📷 Wikimedia Commons</a>` : ""}
-        ${a.audioRef ? `<a href="${esc(a.audioRef)}" target="_blank" rel="noopener">🔊 ${a.id.match(/^B/) ? "xeno-canto" : "Macaulay Library"}</a>` : ""}
-        <a href="https://ja.wikipedia.org/wiki/${encodeURIComponent(a.nameJA)}" target="_blank" rel="noopener">📖 Wikipedia (JA)</a>
-        ${a.nameEN ? `<a href="https://en.wikipedia.org/wiki/${encodeURIComponent(a.nameEN)}" target="_blank" rel="noopener">📖 Wikipedia (EN)</a>` : ""}
+        ${a.imageRef ? `<a href="${esc(a.imageRef)}" target="_blank" rel="noopener" aria-label="Wikimedia Commons (新しいタブで開く)"><span aria-hidden="true">📷</span> Wikimedia Commons <span class="ext-mark" aria-hidden="true">↗</span></a>` : ""}
+        ${a.audioRef ? `<a href="${esc(a.audioRef)}" target="_blank" rel="noopener" aria-label="${esc(audioLabel)} (新しいタブで開く)"><span aria-hidden="true">🔊</span> ${audioLabel} <span class="ext-mark" aria-hidden="true">↗</span></a>` : ""}
+        <a href="https://ja.wikipedia.org/wiki/${encodeURIComponent(a.nameJA)}" target="_blank" rel="noopener" aria-label="Wikipedia 日本語版 (新しいタブで開く)"><span aria-hidden="true">📖</span> Wikipedia (JA) <span class="ext-mark" aria-hidden="true">↗</span></a>
+        ${a.nameEN ? `<a href="https://en.wikipedia.org/wiki/${encodeURIComponent(a.nameEN)}" target="_blank" rel="noopener" aria-label="Wikipedia English (opens in new tab)"><span aria-hidden="true">📖</span> Wikipedia (EN) <span class="ext-mark" aria-hidden="true">↗</span></a>` : ""}
       </div>
     </div>
 
@@ -790,7 +914,10 @@ function openModal(id, pushState = true) {
         ${shareButtons(a)}
       </div>
     </div>
+
+    <p class="modal-hint">Esc キーまたは外側をタップで閉じる</p>
   `;
+  document.getElementById("modalCloseBtn").addEventListener("click", () => closeModal());
   document.getElementById("modalOverlay").classList.add("open");
   document.body.style.overflow = "hidden";
 
@@ -831,10 +958,10 @@ function shareButtons(a) {
   const eu = encodeURIComponent(url);
   const et = encodeURIComponent(text);
   return `
-    <a class="share-btn" href="https://twitter.com/intent/tweet?text=${et}&url=${eu}" target="_blank" rel="noopener">𝕏 Post</a>
-    <a class="share-btn" href="https://www.facebook.com/sharer/sharer.php?u=${eu}" target="_blank" rel="noopener">Facebook</a>
-    <a class="share-btn" href="https://social-plugins.line.me/lineit/share?url=${eu}" target="_blank" rel="noopener">LINE</a>
-    <button class="share-btn" onclick="copyShareUrl('${esc(url)}', this)">📋 URLをコピー</button>
+    <a class="share-btn" href="https://twitter.com/intent/tweet?text=${et}&url=${eu}" target="_blank" rel="noopener" aria-label="X (Twitter) で共有 (新しいタブ)">X Post</a>
+    <a class="share-btn" href="https://www.facebook.com/sharer/sharer.php?u=${eu}" target="_blank" rel="noopener" aria-label="Facebook で共有 (新しいタブ)">Facebook</a>
+    <a class="share-btn" href="https://social-plugins.line.me/lineit/share?url=${eu}" target="_blank" rel="noopener" aria-label="LINE で共有 (新しいタブ)">LINE</a>
+    <button type="button" class="share-btn" data-copy-url="${esc(url)}"><span aria-hidden="true">📋</span> URLをコピー</button>
   `;
 }
 
@@ -842,10 +969,10 @@ function copyShareUrl(url, btn) {
   navigator.clipboard.writeText(url).then(() => {
     btn.classList.add("copied");
     btn.textContent = "✓ コピーしました";
-    setTimeout(() => { btn.classList.remove("copied"); btn.textContent = "📋 URLをコピー"; }, 2000);
+    setTimeout(() => { btn.classList.remove("copied"); btn.innerHTML = '<span aria-hidden="true">📋</span> URLをコピー'; }, 2000);
   }).catch(() => {
     btn.textContent = "コピー失敗";
-    setTimeout(() => { btn.textContent = "📋 URLをコピー"; }, 2000);
+    setTimeout(() => { btn.innerHTML = '<span aria-hidden="true">📋</span> URLをコピー'; }, 2000);
   });
 }
 
@@ -855,7 +982,12 @@ function esc(s) {
 }
 
 init();
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js");
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(err => {
+    // Non-fatal: SW registration may be blocked (private mode, insecure origin, etc.).
+    console.warn("Service worker registration failed:", err);
+  });
+}
 </script>
 </body>
 </html>
