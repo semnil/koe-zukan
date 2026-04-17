@@ -85,6 +85,38 @@ describe("kataToHira", () => {
     assert.equal(kataToHira("ニャー"), "にゃー");
     assert.equal(kataToHira("ワンワーン"), "わんわーん");
   });
+
+  it("handles combined iteration marks and punctuation", () => {
+    // 々 (U+3005), 〜 (U+301C), 、 (U+3001) sit outside the katakana range
+    // and must pass through unchanged.
+    assert.equal(kataToHira("ニャ々"), "にゃ々");
+    assert.equal(kataToHira("ケロ〜"), "けろ〜");
+    assert.equal(kataToHira("ワン、ワン"), "わん、わん");
+  });
+
+  it("leaves halfwidth katakana untouched (documented limitation)", () => {
+    // Halfwidth katakana (U+FF66-U+FF9D) is NOT converted. Search for
+    // ｶﾀｶﾅ against ひらがな-indexed fields will miss. Safe as long as
+    // Excel data uses only fullwidth katakana (audit confirms).
+    assert.equal(kataToHira("ｶﾀｶﾅ"), "ｶﾀｶﾅ");
+    assert.equal(kataToHira("ﾆｬｰ"), "ﾆｬｰ");
+  });
+
+  it("leaves pre-5.0 JIS katakana ヷヸヹヺ untouched (V007)", () => {
+    // U+30F7-U+30FA are historical, outside the conversion regex. Real data
+    // does not contain these so no user-visible impact.
+    assert.equal(kataToHira("ヷ"), "ヷ");
+    assert.equal(kataToHira("ヸ"), "ヸ");
+    assert.equal(kataToHira("ヹ"), "ヹ");
+    assert.equal(kataToHira("ヺ"), "ヺ");
+  });
+
+  it("handles surrogate-pair emoji interleaved with katakana", () => {
+    // Emoji (e.g., 🐱) is represented by surrogate pairs; conversion must
+    // not corrupt the surrogate pair while mapping adjacent katakana.
+    assert.equal(kataToHira("🐱ネコ"), "🐱ねこ");
+    assert.equal(kataToHira("ネコ🐈ネコ"), "ねこ🐈ねこ");
+  });
 });
 
 // ── esc (XSS prevention) ──────────────────────────────
@@ -271,5 +303,151 @@ describe("search key configuration", () => {
       onomatopoeia: [{ onomatopoeia: "" }, { onomatopoeia: "ワン" }],
     });
     assert.deepEqual(a._onoAllHira, ["わん"]);
+  });
+});
+
+// ── getOno (display-language fallback) ─────────────────
+// Extracted from templates/index.html renderResults path.
+
+function getOno(animal, lang) {
+  const entries = (animal.onomatopoeia || []).filter(o => o.lang === lang);
+  if (entries.length === 0) return null;
+  return entries.map(e => e.onomatopoeia).filter(Boolean).join(" / ");
+}
+
+describe("getOno", () => {
+  const animal = {
+    onomatopoeia: [
+      { lang: "ja", onomatopoeia: "ニャー" },
+      { lang: "en", onomatopoeia: "Meow" },
+      { lang: "ko", onomatopoeia: "야옹" },
+      { lang: "zh", onomatopoeia: "喵" },
+    ],
+  };
+
+  it("returns Japanese onomatopoeia for ja", () => {
+    assert.equal(getOno(animal, "ja"), "ニャー");
+  });
+
+  it("returns English onomatopoeia for en", () => {
+    assert.equal(getOno(animal, "en"), "Meow");
+  });
+
+  it("returns null for language with no entries", () => {
+    assert.equal(getOno({ onomatopoeia: [] }, "ja"), null);
+  });
+
+  it("joins multiple entries with slash", () => {
+    const a = {
+      onomatopoeia: [
+        { lang: "ja", onomatopoeia: "ニャー" },
+        { lang: "ja", onomatopoeia: "ミャオ" },
+      ],
+    };
+    assert.equal(getOno(a, "ja"), "ニャー / ミャオ");
+  });
+
+  it("filters falsy onomatopoeia within a language", () => {
+    const a = {
+      onomatopoeia: [
+        { lang: "ja", onomatopoeia: "" },
+        { lang: "ja", onomatopoeia: "ワン" },
+      ],
+    };
+    assert.equal(getOno(a, "ja"), "ワン");
+  });
+});
+
+// ── URL parameter handling (?id=) ──────────────────────
+// Regression guard for the deep-link path that opens modals on load.
+
+describe("URL id parameter extraction", () => {
+  function extractId(urlString) {
+    return new URL(urlString).searchParams.get("id");
+  }
+
+  it("extracts standard ID", () => {
+    assert.equal(extractId("https://koe-zukan.semnil.com/?id=B001"), "B001");
+  });
+
+  it("returns null when id is absent", () => {
+    assert.equal(extractId("https://koe-zukan.semnil.com/"), null);
+  });
+
+  it("decodes URL-encoded IDs", () => {
+    // IDs never contain % in real data, but validate decoding works regardless.
+    assert.equal(extractId("https://x/?id=B%30%30%31"), "B001");
+  });
+
+  it("takes first id when duplicated", () => {
+    assert.equal(extractId("https://x/?id=B001&id=B002"), "B001");
+  });
+});
+
+// ── Share URL encoding ─────────────────────────────────
+// Protects against regressions in the share button URL construction.
+
+describe("share URL encoding", () => {
+  function buildShareUrl(baseUrl, id) {
+    return `${baseUrl}/species/${id}/`;
+  }
+
+  it("builds canonical share URL", () => {
+    const url = buildShareUrl("https://koe-zukan.semnil.com", "B001");
+    assert.equal(url, "https://koe-zukan.semnil.com/species/B001/");
+  });
+
+  it("encodes share URL for Twitter intent", () => {
+    const url = "https://koe-zukan.semnil.com/species/B001/";
+    const encoded = encodeURIComponent(url);
+    // & and / must be percent-encoded for query values
+    assert.match(encoded, /%3A%2F%2F/);
+    assert.equal(encoded, "https%3A%2F%2Fkoe-zukan.semnil.com%2Fspecies%2FB001%2F");
+  });
+});
+
+// ── hasVoice decision path ─────────────────────────────
+// Mirrors renderResults onomatopoeia display branching.
+
+describe("hasVoice display decision", () => {
+  function decide(animal, displayLang, getOnoFn) {
+    const ono = getOnoFn(animal, displayLang)
+      || (displayLang !== "ja" ? animal.onomatopoeiaJA : "");
+    const hasVoice = animal.hasVoice === "あり";
+    if (hasVoice && ono) return { type: "ono", text: ono };
+    if (hasVoice) return { type: "no-data", lang: displayLang };
+    return { type: "silent" };
+  }
+
+  it("renders onomatopoeia when hasVoice and lang entry present", () => {
+    const a = {
+      hasVoice: "あり",
+      onomatopoeiaJA: "ニャー",
+      onomatopoeia: [{ lang: "ja", onomatopoeia: "ニャー" }],
+    };
+    assert.deepEqual(decide(a, "ja", getOno), { type: "ono", text: "ニャー" });
+  });
+
+  it("falls back to onomatopoeiaJA when displayLang lacks data", () => {
+    const a = {
+      hasVoice: "あり",
+      onomatopoeiaJA: "ニャー",
+      onomatopoeia: [{ lang: "ja", onomatopoeia: "ニャー" }],
+    };
+    assert.deepEqual(decide(a, "ko", getOno), { type: "ono", text: "ニャー" });
+  });
+
+  it("shows no-data when hasVoice but all empty for displayLang", () => {
+    const a = {
+      hasVoice: "あり",
+      onomatopoeiaJA: "",
+      onomatopoeia: [],
+    };
+    assert.deepEqual(decide(a, "ja", getOno), { type: "no-data", lang: "ja" });
+  });
+
+  it("shows silent when hasVoice is not あり", () => {
+    const a = { hasVoice: "なし", onomatopoeiaJA: "", onomatopoeia: [] };
+    assert.deepEqual(decide(a, "ja", getOno), { type: "silent" });
   });
 });

@@ -13,6 +13,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 from urllib.parse import urlparse
 
+import openpyxl
 import pytest
 
 # Ensure scripts/ is importable
@@ -168,7 +169,7 @@ class TestGenerateManifest:
         data = json.loads(out.read_text(encoding="utf-8"))
         assert data["name"] == "動物の鳴き声図鑑"
         assert data["display"] == "standalone"
-        assert data["theme_color"] == "#059669"
+        assert data["theme_color"] == "#047857"
         assert any(icon["src"] == "/favicon.svg" for icon in data["icons"])
 
 
@@ -389,3 +390,664 @@ class TestLangLabels:
     def test_labels_non_empty(self):
         for key, val in build.LANG_LABELS.items():
             assert val, f"Empty label for {key}"
+
+
+# ── no-audio.json integrity ─────────────────────────────
+
+class TestNoAudioJson:
+    """Data file integrity: no-audio.json must have unique taxonCodes."""
+
+    def test_no_audio_entries_are_unique(self):
+        # Guards against duplicate entries slipping in via check_audio.py runs.
+        # Duplicates waste memory and signal stale data.
+        if not build.NO_AUDIO_FILE.exists():
+            pytest.skip("no-audio.json not present")
+        with open(build.NO_AUDIO_FILE, "r", encoding="utf-8") as f:
+            items = json.load(f)
+        assert len(items) == len(set(items)), (
+            f"Duplicates in no-audio.json: "
+            f"{[x for x in items if items.count(x) > 1]}"
+        )
+
+    def test_no_audio_entries_are_strings(self):
+        if not build.NO_AUDIO_FILE.exists():
+            pytest.skip("no-audio.json not present")
+        with open(build.NO_AUDIO_FILE, "r", encoding="utf-8") as f:
+            items = json.load(f)
+        for it in items:
+            assert isinstance(it, str) and it, f"Invalid taxonCode entry: {it!r}"
+
+
+# ── JSON-LD injection safety ───────────────────────────
+
+class TestJsonLdInjectionSafety:
+    """JSON-LD script block must not be breakable by field values containing `</script>`.
+
+    Python's `json.dumps` escapes `"` and `\\` but NOT `<`, `>`, `&`, so a field
+    value like `</script><script>alert(1)</script>` would split the JSON-LD block
+    and allow arbitrary script injection. This is a latent XSS; Excel data is
+    trusted but the code contract should defend against it.
+    """
+
+    def _make_animal(self, nameJA="", nameEN="", scientificName="Sci"):
+        return {
+            "id": "X001",
+            "nameJA": nameJA or "テスト",
+            "nameEN": nameEN,
+            "scientificName": scientificName,
+            "altJA": "", "altEN": "",
+            "class": "test", "order": "test", "family": "test",
+            "voiceMethod": "", "conservation": "",
+            "habitat": "", "note": "",
+            "imageRef": "", "audioRef": "",
+            "onomatopoeiaJA": "",
+            "onomatopoeia": [],
+            "regions": [],
+        }
+
+    def _json_ld_range(self, html):
+        """Return (start, end_of_opening_tag) for the JSON-LD script block.
+
+        `end_of_opening_tag` is the character position right after the opening
+        `<script type="application/ld+json">`. The body extends from there
+        until the NEXT `</script>` in the document. An injection succeeds when
+        that `</script>` appears BEFORE the legitimate one.
+        """
+        import re
+        open_m = re.search(
+            r'<script type="application/ld\+json">', html
+        )
+        if not open_m:
+            return None
+        body_start = open_m.end()
+        # Find the FIRST closing tag after body_start
+        close_idx = html.find("</script>", body_start)
+        return (body_start, close_idx)
+
+    def test_json_ld_resists_closing_script_tag_in_nameEN(self, tmp_path):
+        animal = self._make_animal(
+            nameJA="テスト",
+            nameEN='Evil</script><script>alert("xss")</script>',
+        )
+        build.generate_species_pages([animal], tmp_path)
+        html = (tmp_path / "species" / "X001" / "index.html").read_text(
+            encoding="utf-8",
+        )
+        # Expose the defect: the body BETWEEN the JSON-LD opening tag and the
+        # first </script> must parse as valid JSON. If the attacker's </script>
+        # closes the block prematurely, the body is truncated JSON.
+        rng = self._json_ld_range(html)
+        assert rng is not None
+        body = html[rng[0]:rng[1]].strip()
+        import json as _json
+        try:
+            _json.loads(body)
+        except _json.JSONDecodeError as e:
+            raise AssertionError(
+                f"JSON-LD block truncated by injected </script>: {e}\n"
+                f"Body starts with: {body[:200]!r}"
+            )
+
+    def test_json_ld_resists_closing_script_tag_in_nameJA(self, tmp_path):
+        animal = self._make_animal(
+            nameJA='悪意</script><script>alert(1)</script>',
+            nameEN="Test",
+        )
+        build.generate_species_pages([animal], tmp_path)
+        html = (tmp_path / "species" / "X001" / "index.html").read_text(
+            encoding="utf-8",
+        )
+        rng = self._json_ld_range(html)
+        assert rng is not None
+        body = html[rng[0]:rng[1]].strip()
+        import json as _json
+        try:
+            _json.loads(body)
+        except _json.JSONDecodeError as e:
+            raise AssertionError(
+                f"JSON-LD block truncated by injected </script>: {e}"
+            )
+
+
+# ── Build integration (full pipeline) ───────────────────
+
+class TestBuildIntegration:
+    """Run the full pipeline against the real Excel and assert key invariants on dist/."""
+
+    @pytest.fixture(scope="class")
+    def dist(self):
+        import subprocess
+        root = Path(__file__).resolve().parent.parent
+        result = subprocess.run(
+            ["python3", "scripts/build.py"],
+            cwd=root, capture_output=True, text=True,
+        )
+        assert result.returncode == 0, (
+            f"build failed: {result.stderr[-500:]}"
+        )
+        return root / "dist"
+
+    def test_sitemap_matches_species_filesystem(self, dist):
+        import re
+        sitemap = (dist / "sitemap.xml").read_text(encoding="utf-8")
+        sm_ids = set(re.findall(r"/species/([^/]+)/", sitemap))
+        fs_ids = {p.name for p in (dist / "species").iterdir() if p.is_dir()}
+        assert sm_ids == fs_ids, (
+            f"sitemap/filesystem mismatch: "
+            f"extra in sitemap={sm_ids - fs_ids}, extra in fs={fs_ids - sm_ids}"
+        )
+
+    def test_no_unreplaced_placeholders_in_dist(self, dist):
+        import re
+        pattern = re.compile(r"\{\{[A-Z_]+\}\}")
+        offenders = []
+        for html in dist.rglob("*.html"):
+            text = html.read_text(encoding="utf-8")
+            found = pattern.findall(text)
+            if found:
+                offenders.append((html.relative_to(dist), found))
+        assert not offenders, f"Unreplaced placeholders: {offenders[:5]}"
+
+    def test_all_json_ld_blocks_parse(self, dist):
+        import re
+        bad = []
+        for page in (dist / "species").rglob("index.html"):
+            html = page.read_text(encoding="utf-8")
+            m = re.search(
+                r'<script type="application/ld\+json">\s*(\{.*?\})\s*</script>',
+                html, re.DOTALL,
+            )
+            if not m:
+                bad.append((page.parent.name, "missing"))
+                continue
+            try:
+                data = json.loads(m.group(1))
+                if data.get("@type") != "Article":
+                    bad.append((page.parent.name, f"type={data.get('@type')}"))
+            except json.JSONDecodeError as e:
+                bad.append((page.parent.name, str(e)))
+        assert not bad, f"JSON-LD issues: {bad[:5]}"
+
+    def test_all_external_links_have_rel_noopener(self, dist):
+        import re
+        offenders = []
+        for page in (dist / "species").rglob("index.html"):
+            html = page.read_text(encoding="utf-8")
+            for tag in re.findall(r'<a[^>]+target="_blank"[^>]*>', html):
+                if "noopener" not in tag:
+                    offenders.append((page.parent.name, tag[:80]))
+                    break
+        assert not offenders, f"External links missing rel=noopener: {offenders[:3]}"
+
+    def test_no_audio_taxon_codes_not_in_any_audio_url(self, dist):
+        with open(dist / "animals.json", encoding="utf-8") as f:
+            animals = json.load(f)
+        if not build.NO_AUDIO_FILE.exists():
+            pytest.skip("no-audio.json absent")
+        with open(build.NO_AUDIO_FILE, encoding="utf-8") as f:
+            no_audio = set(json.load(f))
+        # Only non-bird audio URLs can contain taxonCodes
+        violations = []
+        for a in animals:
+            if a["id"].startswith("B"):
+                continue
+            for tc in no_audio:
+                if tc in a.get("audioRef", ""):
+                    violations.append((a["id"], tc))
+        assert not violations, f"no-audio taxonCodes appearing in audioRef: {violations[:3]}"
+
+    def test_species_ogp_images_nonempty(self, dist):
+        zero_files = [
+            p.parent.name
+            for p in (dist / "species").rglob("ogp.png")
+            if p.stat().st_size == 0
+        ]
+        assert not zero_files, f"Zero-byte OGP: {zero_files[:5]}"
+
+    def test_sitemap_url_count_matches_species_plus_one(self, dist):
+        import re
+        sitemap = (dist / "sitemap.xml").read_text(encoding="utf-8")
+        urls = re.findall(r"<loc>([^<]+)</loc>", sitemap)
+        with open(dist / "animals.json", encoding="utf-8") as f:
+            animals = json.load(f)
+        assert len(urls) == len(animals) + 1, (
+            f"sitemap URLs={len(urls)} vs species={len(animals)}+1 top"
+        )
+
+    def test_animals_json_ids_unique(self, dist):
+        with open(dist / "animals.json", encoding="utf-8") as f:
+            animals = json.load(f)
+        ids = [a["id"] for a in animals]
+        assert len(ids) == len(set(ids))
+
+    def test_animals_json_id_format(self, dist):
+        import re
+        with open(dist / "animals.json", encoding="utf-8") as f:
+            animals = json.load(f)
+        bad = [a["id"] for a in animals if not re.match(r"^[A-Z][0-9]+$", a["id"])]
+        assert not bad, f"IDs not matching /^[A-Z][0-9]+$/: {bad}"
+
+    def test_all_audio_refs_are_https_urls(self, dist):
+        with open(dist / "animals.json", encoding="utf-8") as f:
+            animals = json.load(f)
+        invalid = [a["id"] for a in animals if a.get("audioRef") and not a["audioRef"].startswith("https://")]
+        assert not invalid, f"audioRef not https: {invalid[:3]}"
+
+    def test_image_refs_are_https_urls(self, dist):
+        with open(dist / "animals.json", encoding="utf-8") as f:
+            animals = json.load(f)
+        invalid = [a["id"] for a in animals if a.get("imageRef") and not a["imageRef"].startswith("https://")]
+        assert not invalid, f"imageRef not https: {invalid[:3]}"
+
+    def test_sw_cache_version_changes_with_species_count(self, dist):
+        # Version is a function of date + species count; two consecutive runs on the
+        # same day produce identical cache names, giving deterministic offline behavior.
+        sw = (dist / "sw.js").read_text(encoding="utf-8")
+        with open(dist / "animals.json", encoding="utf-8") as f:
+            animals = json.load(f)
+        assert f"-{len(animals)}" in sw
+
+    def test_built_sw_is_syntactically_valid(self, dist):
+        # Real dist/sw.js must parse. A syntax error silently breaks PWA
+        # offline caching for every visitor.
+        import shutil, subprocess
+        if not shutil.which("node"):
+            pytest.skip("node not available")
+        result = subprocess.run(
+            ["node", "--check", str(dist / "sw.js")],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, (
+            f"dist/sw.js syntax error: {result.stderr}"
+        )
+
+    def test_built_sitemap_is_well_formed_xml(self, dist):
+        import xml.etree.ElementTree as ET
+        ET.parse(dist / "sitemap.xml")  # raises on malformed XML
+
+
+# ── Excel data integrity (real data) ────────────────────
+
+class TestExcelIntegrity:
+    """Assert referential integrity across Excel sheets.
+
+    These are contract-level checks (foreign keys, required mappings) that the
+    build does not enforce because it silently tolerates missing joins.
+    """
+
+    @pytest.fixture(scope="class")
+    def wb(self):
+        if not build.DATA_FILE.exists():
+            pytest.skip("Excel data file not present")
+        return openpyxl.load_workbook(build.DATA_FILE, data_only=True)
+
+    def _collect_ids(self, ws):
+        return [str(row[0]) for row in ws.iter_rows(min_row=2, values_only=True) if row[0]]
+
+    def test_name_mapping_matches_main_data(self, wb):
+        main_ids = set(self._collect_ids(wb["メインデータ"]))
+        name_ids = set(self._collect_ids(wb["名称マッピング"]))
+        assert main_ids == name_ids, (
+            f"name-map mismatch: missing={main_ids - name_ids}, orphan={name_ids - main_ids}"
+        )
+
+    def test_onomatopoeia_mapping_has_no_orphans(self, wb):
+        # Guards against I033-style orphans: onomatopoeia entries that reference
+        # a species ID not present in メインデータ. Safe to remove these entries.
+        main_ids = set(self._collect_ids(wb["メインデータ"]))
+        ono_ids = set(self._collect_ids(wb["オノマトペマッピング"]))
+        orphans = ono_ids - main_ids
+        assert not orphans, f"Orphan onomatopoeia IDs (no matching main data): {orphans}"
+
+    def test_region_mapping_has_no_orphans(self, wb):
+        main_ids = set(self._collect_ids(wb["メインデータ"]))
+        reg_ids = set(self._collect_ids(wb["地域マッピング"]))
+        orphans = reg_ids - main_ids
+        assert not orphans, f"Orphan region mapping IDs: {orphans}"
+
+    def test_region_mapping_uses_valid_region_ids(self, wb):
+        master_rids = {str(row[0]) for row in wb["地域マスター"].iter_rows(min_row=2, values_only=True) if row[0]}
+        used_rids = set()
+        for row in wb["地域マッピング"].iter_rows(min_row=2, values_only=True):
+            if row[0] and row[2]:
+                used_rids.add(str(row[2]))
+        unknown = used_rids - master_rids
+        assert not unknown, f"Region IDs referenced but not in 地域マスター: {unknown}"
+
+    def test_all_classes_have_taxonomy_entry(self, wb):
+        # classEN in animals.json is populated from 分類マッピング. Missing entries
+        # leave classEN empty, which silently degrades JSON consumers.
+        classes = set()
+        for row in wb["メインデータ"].iter_rows(min_row=2, values_only=True):
+            if row[0] and row[3]:
+                classes.add(str(row[3]))
+        tax = {(str(row[0]), str(row[1])) for row in wb["分類マッピング"].iter_rows(min_row=2, values_only=True) if row[0] and row[1]}
+        missing = [c for c in classes if ("綱", c) not in tax]
+        assert not missing, f"Classes without taxonomy mapping (empty classEN): {missing}"
+
+    def test_all_orders_have_taxonomy_entry(self, wb):
+        orders = set()
+        for row in wb["メインデータ"].iter_rows(min_row=2, values_only=True):
+            if row[0] and row[4]:
+                orders.add(str(row[4]))
+        tax = {(str(row[0]), str(row[1])) for row in wb["分類マッピング"].iter_rows(min_row=2, values_only=True) if row[0] and row[1]}
+        missing = [o for o in orders if ("目", o) not in tax]
+        assert not missing, f"Orders without taxonomy mapping (empty orderEN): {missing}"
+
+    def test_all_families_have_taxonomy_entry(self, wb):
+        families = set()
+        for row in wb["メインデータ"].iter_rows(min_row=2, values_only=True):
+            if row[0] and row[5]:
+                families.add(str(row[5]))
+        tax = {(str(row[0]), str(row[1])) for row in wb["分類マッピング"].iter_rows(min_row=2, values_only=True) if row[0] and row[1]}
+        missing = [f for f in families if ("科", f) not in tax]
+        assert not missing, f"Families without taxonomy mapping (empty familyEN): {missing}"
+
+    def test_has_voice_species_have_all_four_languages(self, wb):
+        # When hasVoice=あり, we expect onomatopoeia for all 4 languages.
+        main_rows = {
+            str(row[0]): row
+            for row in wb["メインデータ"].iter_rows(min_row=2, values_only=True)
+            if row[0]
+        }
+        ono_by_id = {}
+        for row in wb["オノマトペマッピング"].iter_rows(min_row=2, values_only=True):
+            if row[0] and row[2] and row[4]:
+                ono_by_id.setdefault(str(row[0]), set()).add(str(row[2]))
+        expected = {"ja", "en", "ko", "zh"}
+        missing = []
+        for aid, row in main_rows.items():
+            if row[6] == "あり":
+                have = ono_by_id.get(aid, set())
+                if have != expected:
+                    missing.append((aid, sorted(expected - have)))
+        assert not missing, f"hasVoice species missing language onomatopoeia: {missing[:5]}"
+
+    def test_no_voice_species_have_no_onomatopoeia(self, wb):
+        # Contract: hasVoice=なし implies zero onomatopoeia rows. Breaking this
+        # lets bulk-generated Korean/Chinese entries leak into animals.json for
+        # species that don't actually produce sound.
+        main_rows = {
+            str(row[0]): row
+            for row in wb["メインデータ"].iter_rows(min_row=2, values_only=True)
+            if row[0]
+        }
+        ono_by_id = {}
+        for row in wb["オノマトペマッピング"].iter_rows(min_row=2, values_only=True):
+            if row[0] and row[2] and row[4]:
+                ono_by_id.setdefault(str(row[0]), []).append(str(row[2]))
+        violations = []
+        for aid, row in main_rows.items():
+            if row[6] != "あり" and ono_by_id.get(aid):
+                violations.append((aid, ono_by_id[aid]))
+        assert not violations, (
+            f"Non-voiced species have onomatopoeia entries: {violations[:5]}"
+        )
+
+
+# ── SW / PWA contracts ──────────────────────────────────
+
+class TestServiceWorkerContracts:
+    def test_sw_excludes_cdn_from_cache(self, tmp_path):
+        # URLS list must only contain same-origin paths. Cross-origin CDN
+        # (Fuse.js) is served opaque and cannot be precached deterministically.
+        out = tmp_path / "sw.js"
+        build.generate_sw([], out)
+        sw = out.read_text(encoding="utf-8")
+        assert "cdnjs" not in sw
+        assert "http://" not in sw
+
+    def test_sw_activate_clears_old_caches(self, tmp_path):
+        out = tmp_path / "sw.js"
+        build.generate_sw([{"id": "B001"}], out)
+        sw = out.read_text(encoding="utf-8")
+        # Old caches (keys !== CACHE_NAME) are deleted on activate.
+        assert "caches.delete" in sw
+        assert "k !== CACHE_NAME" in sw
+
+    def test_sw_fetch_falls_back_to_root_on_navigation(self, tmp_path):
+        # Offline navigation to an uncached species page falls back to /.
+        out = tmp_path / "sw.js"
+        build.generate_sw([], out)
+        sw = out.read_text(encoding="utf-8")
+        assert 'request.mode === "navigate"' in sw
+        assert 'caches.match("/")' in sw
+
+    def test_sw_parses_as_valid_javascript(self, tmp_path):
+        # SW with mismatched parens silently fails to register in all browsers,
+        # breaking offline caching. Use `node --check` to catch regressions.
+        import shutil, subprocess
+        if not shutil.which("node"):
+            pytest.skip("node not available")
+        out = tmp_path / "sw.js"
+        build.generate_sw([{"id": "B001"}], out)
+        result = subprocess.run(
+            ["node", "--check", str(out)],
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, (
+            f"Service worker has syntax error: {result.stderr}"
+        )
+
+    def test_sw_parens_are_balanced(self, tmp_path):
+        # Faster paren/brace balance check that runs without node. Redundant
+        # with test_sw_parses_as_valid_javascript but useful when CI lacks node.
+        out = tmp_path / "sw.js"
+        build.generate_sw([{"id": "B001"}], out)
+        sw = out.read_text(encoding="utf-8")
+        # String-literal parens must be ignored. Strip string contents first.
+        import re
+        stripped = re.sub(r'"[^"]*"', '""', sw)
+        assert stripped.count("(") == stripped.count(")"), (
+            f"Paren imbalance: ({stripped.count('(')} vs ){stripped.count(')')}"
+        )
+        assert stripped.count("{") == stripped.count("}"), (
+            f"Brace imbalance: {{ {stripped.count('{')} vs }} {stripped.count('}')}"
+        )
+
+
+# ── Manifest contracts ──────────────────────────────────
+
+class TestManifestContracts:
+    def test_manifest_has_pwa_essentials(self, tmp_path):
+        out = tmp_path / "manifest.json"
+        build.generate_manifest(out)
+        data = json.loads(out.read_text(encoding="utf-8"))
+        for key in ("name", "short_name", "start_url", "display", "icons"):
+            assert key in data, f"manifest missing {key}"
+
+    def test_manifest_icons_have_type(self, tmp_path):
+        out = tmp_path / "manifest.json"
+        build.generate_manifest(out)
+        data = json.loads(out.read_text(encoding="utf-8"))
+        for icon in data["icons"]:
+            assert "src" in icon and "type" in icon
+
+
+# ── Sitemap date format ─────────────────────────────────
+
+class TestSitemapDate:
+    def test_sitemap_lastmod_iso_format(self, tmp_path):
+        import re
+        build.generate_sitemap([{"id": "B001"}], tmp_path / "sitemap.xml")
+        xml = (tmp_path / "sitemap.xml").read_text(encoding="utf-8")
+        dates = re.findall(r"<lastmod>([^<]+)</lastmod>", xml)
+        assert dates
+        for d in dates:
+            # YYYY-MM-DD
+            assert re.match(r"^\d{4}-\d{2}-\d{2}$", d), f"bad date format: {d}"
+
+
+# ── Build_stats boundaries ──────────────────────────────
+
+class TestBuildStatsBoundaries:
+    def test_missing_onomatopoeia_key_raises(self):
+        # If someone feeds animals without the onomatopoeia field, build_stats
+        # should fail loudly rather than silently producing wrong counts.
+        with pytest.raises((KeyError, TypeError)):
+            build.build_stats([{"id": "X001"}])
+
+    def test_lang_set_is_sorted(self):
+        animals = [{"onomatopoeia": [{"lang": l} for l in ["zh", "en", "ja"]]}]
+        stats = build.build_stats(animals)
+        assert stats["languages"] == sorted(stats["languages"])
+
+
+# ── _build_audio_ref extended boundaries ────────────────
+
+class TestBuildAudioRefBoundaries:
+    def test_bird_scientific_with_extra_whitespace(self):
+        # Scientific name with leading/trailing spaces should still resolve.
+        url = build._build_audio_ref("B001", " Passer montanus ", "pasmon1")
+        # Implementation uses str.split() which ignores leading/trailing whitespace.
+        assert "xeno-canto.org" in url and "Passer-montanus" in url
+
+    def test_bird_three_word_scientific_name(self):
+        # Trinomials (e.g., subspecies) use first two tokens.
+        url = build._build_audio_ref("B001", "Passer montanus saturatus", "ignore")
+        assert url == "https://xeno-canto.org/species/Passer-montanus"
+
+    def test_no_audio_set_exact_match_required(self):
+        # Substring matches must NOT trigger no-audio suppression.
+        with patch.object(build, "_NO_AUDIO", {"canlup"}):
+            url = build._build_audio_ref("M001", "Canis lupus", "canlup1")
+            assert "macaulaylibrary.org" in url
+
+    def test_xeno_canto_scientific_name_is_not_url_encoded(self):
+        # xeno-canto accepts Genus-species in ASCII; non-ASCII scientific names
+        # would require encoding. Currently NOT encoded, so document the behavior.
+        # (All real scientific names are ASCII.)
+        url = build._build_audio_ref("B001", "Cyanistes caeruleus", "eurbtt")
+        assert url == "https://xeno-canto.org/species/Cyanistes-caeruleus"
+
+
+# ── PWA icons (R3) ──────────────────────────────────────
+
+class TestPwaIcons:
+    """Raster PNG icons required by Chrome Android / Lighthouse PWA audit (M8)."""
+
+    def test_generate_pwa_icons_produces_192_and_512(self, tmp_path):
+        sizes = build.generate_pwa_icons(tmp_path)
+        assert sizes == [192, 512]
+        for s in sizes:
+            p = tmp_path / f"icon-{s}.png"
+            assert p.exists() and p.stat().st_size > 0
+
+    def test_generate_pwa_icons_are_valid_png_with_correct_dimensions(self, tmp_path):
+        # Guard against the regex change or gradient math producing corrupt
+        # images that Chrome silently ignores.
+        try:
+            from PIL import Image
+        except ImportError:
+            pytest.skip("Pillow not available")
+        build.generate_pwa_icons(tmp_path)
+        for size in (192, 512):
+            img = Image.open(tmp_path / f"icon-{size}.png")
+            assert img.format == "PNG"
+            assert img.size == (size, size)
+
+    def test_generate_pwa_icons_render_silhouette(self, tmp_path):
+        # Center must be distinctly lighter than corners: an all-background icon
+        # means the SVG point extraction regression-returned empty.
+        try:
+            from PIL import Image
+        except ImportError:
+            pytest.skip("Pillow not available")
+        build.generate_pwa_icons(tmp_path)
+        img = Image.open(tmp_path / "icon-192.png")
+        w, h = img.size
+        center = img.getpixel((w // 2, h // 2))
+        corner = img.getpixel((3, 3))
+        assert sum(center[:3]) > sum(corner[:3]) + 50, (
+            "PWA icon has no visible silhouette — SVG point extraction likely broken"
+        )
+
+
+# ── Build idempotency (R3) ──────────────────────────────
+
+class TestBuildIdempotency:
+    """Running build twice on the same day must produce byte-identical output.
+
+    Non-determinism here would defeat SW cache-busting (cache name changes
+    drive client-side cache invalidation) and waste CI cache. The only
+    date-dependent field is intentional (sitemap lastmod, SW cache name).
+    """
+
+    def test_two_builds_produce_identical_dist(self):
+        import hashlib, subprocess
+        root = Path(__file__).resolve().parent.parent
+        dist = root / "dist"
+
+        subprocess.run(
+            ["python3", "scripts/build.py"],
+            cwd=root, capture_output=True, check=True,
+        )
+        first = {
+            str(p.relative_to(dist)): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in dist.rglob("*") if p.is_file()
+        }
+        subprocess.run(
+            ["python3", "scripts/build.py"],
+            cwd=root, capture_output=True, check=True,
+        )
+        second = {
+            str(p.relative_to(dist)): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in dist.rglob("*") if p.is_file()
+        }
+        diffs = [k for k in first if first[k] != second.get(k)]
+        assert not diffs, f"Non-deterministic files: {diffs[:5]}"
+
+
+# ── SW × Manifest icon coherence (R3) ───────────────────
+
+class TestServiceWorkerManifestCoherence:
+    """Cross-resource contract: PNG icons referenced by manifest should ideally
+    be precached. Currently the SW URLS list omits PNG icons (M8 added them
+    after the SW template was written); lazy caching still works on first
+    fetch. This test documents the gap so a future change gets noticed.
+    """
+
+    def test_manifest_png_icons_lazy_cached_only(self, tmp_path):
+        # If build.py is changed to precache PNG icons, update this contract.
+        build.generate_manifest(tmp_path / "manifest.json", icon_sizes=(192, 512))
+        build.generate_sw([], tmp_path / "sw.js")
+        sw = (tmp_path / "sw.js").read_text(encoding="utf-8")
+        manifest = json.loads(
+            (tmp_path / "manifest.json").read_text(encoding="utf-8")
+        )
+        png_srcs = [i["src"] for i in manifest["icons"] if i.get("type") == "image/png"]
+        assert png_srcs, "manifest has no PNG icons — M8 regression"
+        # Currently PNG icons are NOT precached (lazy cache-on-fetch). Flip the
+        # assertion if this design changes.
+        for src in png_srcs:
+            assert src not in sw, (
+                f"{src} unexpectedly precached — update contract test"
+            )
+
+
+# ── Template SVG extraction robustness (R3) ─────────────
+
+class TestSvgPointExtractionAnchoring:
+    """Regex change: `d="..."` must only match the path data attribute, not
+    attributes that happen to end in `d` (e.g., `id=`). The R2 fix anchors on
+    whitespace before `d=`.
+    """
+
+    def test_does_not_match_id_attribute(self, tmp_path):
+        svg = tmp_path / "t.svg"
+        # `id="mydata"` ends in "ta"; path `d=` is the real target.
+        svg.write_text('<svg><path id="foo" d="M 10 20 L 30 40"/></svg>')
+        pts = build._parse_svg_points(svg)
+        assert pts == [(10.0, 20.0), (30.0, 40.0)]
+
+    def test_does_not_match_embedded_d_in_other_attributes(self, tmp_path):
+        svg = tmp_path / "t.svg"
+        # Previous naive regex `d="..."` could match inside `data-d="..."`.
+        svg.write_text(
+            '<svg data-d="X1 Y1"><path d="M 5 5 L 6 6"/></svg>'
+        )
+        pts = build._parse_svg_points(svg)
+        assert (5.0, 5.0) in pts
+        assert (6.0, 6.0) in pts
+        # The bogus data-d coords must NOT be extracted.
+        assert all(x not in {"X1", "Y1"} for pt in pts for x in pt)
