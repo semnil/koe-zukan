@@ -34,6 +34,23 @@ NO_AUDIO_FILE = PROJECT_ROOT / "data" / "no-audio.json"
 SITE_URL = "https://koe-zukan.semnil.com"
 
 
+def _json_for_script(value):
+    """Serialize a Python string for embedding inside an HTML <script> block.
+
+    json.dumps() escapes " and \\ but leaves < > & alone; in a <script>
+    context that lets a `</script>` in the payload terminate the block early
+    (XSS). Escape the HTML-sensitive chars as \\uXXXX so the result is still
+    valid JSON and safe in HTML. Returns the inner string (no surrounding
+    quotes) for use inside an already-quoted template slot.
+    """
+    dumped = json.dumps(value, ensure_ascii=False)[1:-1]
+    return (
+        dumped.replace("<", "\\u003c")
+              .replace(">", "\\u003e")
+              .replace("&", "\\u0026")
+    )
+
+
 def _load_no_audio():
     """Load taxonCodes with no audio on Macaulay Library."""
     if NO_AUDIO_FILE.exists():
@@ -508,10 +525,12 @@ def generate_species_pages(animals, dist_dir):
         alt_en = a.get("altEN", "")
         note = a.get("note", "")
         note_html = f'<div class="detail-row"><span class="detail-label">備考</span><span>{esc(note)}</span></div>' if note else ""
-        # JSON-safe values for JSON-LD (no HTML escaping, use json.dumps for proper escaping)
+        # JSON-safe values for JSON-LD. json.dumps escapes " and \ but NOT < > &,
+        # so values containing "</script>" would break out of the <script> block.
+        # Replace HTML-sensitive chars with \uXXXX escapes (OWASP-recommended).
         json_headline_text = f"{a['nameJA']} ({a.get('nameEN', '')})" if a.get('nameEN') else a['nameJA']
-        json_headline = json.dumps(json_headline_text, ensure_ascii=False)[1:-1]
-        json_desc = json.dumps(desc, ensure_ascii=False)[1:-1]
+        json_headline = _json_for_script(json_headline_text)
+        json_desc = _json_for_script(desc)
         page = _apply_placeholders(template, {
             "SITE_URL": SITE_URL,
             "ID": esc(aid),
