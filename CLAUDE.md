@@ -33,19 +33,23 @@ koe-zukan/
 │   ├── test_build.py      ← build.py ユニットテスト (pytest)
 │   └── test_frontend.mjs  ← フロントエンドロジックテスト (node --test)
 ├── docs/
-│   └── verification-report.md ← ソフトウェア検証レポート (V001-V012)
+│   ├── verification-report.md   ← ソフトウェア検証レポート (V001-V012 + V013 以降の監査ラウンド追記)
+│   ├── ux-audit-report.md       ← UI/UX 監査レポート (ラウンド 1-3、WCAG 2.1 AA / 2.2 AA 適合確認)
+│   └── quality-audit-report.md  ← 品質監査レポート (ラウンド 1-3、契約/構文/ピクセル検査)
 └── dist/                  ← ビルド出力（GitHub Pages デプロイ対象、gitignore）
     ├── index.html         ← テンプレートから生成（プレースホルダー置換済み）
     ├── animals.json
     ├── regions.json
     ├── sitemap.xml        ← Google 用サイトマップ (全種 /species/{ID}/ URL)
     ├── ogp.png            ← トップページ OGP 画像 (1200x630, Pillow で動的生成)
+    ├── icon-192.png       ← PWA アイコン 192x192 (Pillow 動的生成, maskable)
+    ├── icon-512.png       ← PWA アイコン 512x512 (Pillow 動的生成, maskable)
     ├── manifest.json      ← PWA マニフェスト
     ├── sw.js              ← Service Worker (キャッシュファースト)
     ├── favicon.svg
     ├── CNAME              ← GitHub Pages カスタムドメイン
     └── species/{ID}/      ← 個別種ページ (305 ディレクトリ)
-        ├── index.html     ← 種ページ HTML (JSON-LD, OGP, 共有ボタン)
+        ├── index.html     ← 種ページ HTML (JSON-LD, OGP, 共有ボタン, hreflang)
         └── ogp.png        ← 種別 OGP 画像 (オノマトペ 4 言語表示)
 ```
 
@@ -62,12 +66,13 @@ python scripts/build.py
 
 - `animals.json`, `regions.json` — Excel から変換した JSON データ
 - `index.html` — テンプレートからプレースホルダーを置換して生成
-- `species/{ID}/index.html` — 個別種ページ (305 ページ、JSON-LD + OGP + 共有ボタン)
+- `species/{ID}/index.html` — 個別種ページ (305 ページ、JSON-LD + OGP + 共有ボタン + hreflang 5 本)
 - `species/{ID}/ogp.png` — 種別 OGP 画像 (オノマトペ 4 言語表示、CJK 言語別フォント)
 - `sitemap.xml` — トップページ + 全種の `/species/{ID}/` ディープリンク
 - `ogp.png` — トップページ OGP 画像 (Pillow で動的生成、種数・言語数を反映)
-- `manifest.json` — PWA マニフェスト
-- `sw.js` — Service Worker (バージョン付きキャッシュ、cache-first 戦略)
+- `icon-192.png` / `icon-512.png` — PWA 用 PNG アイコン (Pillow で `favicon.svg` から動的生成、`purpose: "any maskable"`)
+- `manifest.json` — PWA マニフェスト (`lang`, `scope`, `icons` 配列に SVG + 192/512 PNG を登録)
+- `sw.js` — Service Worker (バージョン付きキャッシュ、cache-first、navigate は `/` にフォールバック)
 - `CNAME` — `SITE_URL` から自動生成
 
 ### テンプレートプレースホルダー
@@ -91,16 +96,18 @@ python scripts/build.py
 | `{{SCIENTIFIC_NAME}}` | 学名 |
 | `{{ALT_EN}}` | 英名別名 (括弧付き or 空) |
 | `{{CLASS}}`, `{{ORDER}}`, `{{FAMILY}}` | 綱、目、科 |
+| `{{CLASS_CSS}}`, `{{CLASS_ICON}}` | 綱別のタグ CSS クラス・絵文字 (トップページと色/アイコン統一) |
 | `{{VOICE_METHOD}}` | 発声方法 (なければ「—」) |
 | `{{CONSERVATION}}` | 保全状況 (IUCN コード + 日本語ラベル) |
 | `{{REGIONS}}` | 生息地域 (読点区切り) |
 | `{{NOTE}}` | 備考 HTML (なければ空) |
 | `{{DESCRIPTION}}` | meta description |
-| `{{ONO_SECTION}}` | オノマトペセクション HTML |
-| `{{LINKS}}` | 外部リンク HTML |
-| `{{SHARE_BUTTONS}}` | 共有ボタン HTML |
+| `{{ONO_SECTION}}` | オノマトペセクション HTML (各 `ono-cell-text` に `lang` 属性付与) |
+| `{{LINKS}}` | 外部リンク HTML (`aria-label`, `rel="noopener"`, 視覚的 `↗` マーク付き) |
+| `{{SHARE_BUTTONS}}` | 共有ボタン HTML (X/Facebook/LINE/URL コピー) |
+| `{{JSON_HEADLINE}}`, `{{JSON_DESCRIPTION}}` | JSON-LD 用に `<`/`>`/`&` を `\u003c` 等にエスケープした文字列 |
 
-未置換プレースホルダーはビルド時に警告出力される (`_apply_placeholders`)。
+未置換プレースホルダーはビルド時に警告出力される (`_apply_placeholders`)。`SHARE_BUTTONS` は警告対象から除外し、後段で個別注入する。
 
 ## デプロイ
 
@@ -146,15 +153,45 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
 - 完全静的サイト（バックエンド不要）
 - フロントエンド検索: Fuse.js（CDN読み込み）
 - ひらがな検索: カタカナ→ひらがな自動変換で「ねこ」「にゃー」等のひらがな入力に対応
-- ブラウザ言語自動検出: `navigator.language` で初期表示言語を ja/en/ko/zh から自動選択
+- ブラウザ言語自動検出: `navigator.language` で初期表示言語を ja/en/ko/zh から自動選択 (URL `?lang=` パラメータが優先)
 - データ: ビルド時にExcel→JSON変換、ページロード時にfetchしてインメモリ検索
 - レスポンシブ対応（モバイル含む）
 - OGP / Twitter Card 対応（トップページ + 個別種ページ、CJK 言語別フォント）
-- 個別種ページ: `/species/{ID}/` (305 ページ、JSON-LD 構造化データ、canonical URL)
+- 個別種ページ: `/species/{ID}/` (305 ページ、JSON-LD 構造化データ、canonical URL、hreflang ja/en/ko/zh/x-default)
 - 共有ボタン: X (Twitter), Facebook, LINE, URLコピー（モーダル + 種ページ両方）
-- PWA 対応: manifest.json + Service Worker (キャッシュファースト戦略)
+- PWA 対応: manifest.json + Service Worker (キャッシュファースト、192/512 PNG アイコン maskable)
 - URL パラメータ `?id=` でカード直接リンク
 - Google Search Console 連携 (サイトマップ + 所有権確認メタタグ)
+
+### アクセシビリティ
+
+- WCAG 2.1 AA および WCAG 2.2 追加 AA SC 適合 (UX 監査ラウンド 3 で全項目 Pass 判定)
+- `<main id="main">` ランドマーク + `.skip-link`「コンテンツへスキップ」(index + species 両テンプレート)
+- `<html lang>` はトップページで表示言語切替に同期、種ページは `lang="ja"` 固定
+- 局所 `lang` 属性: 英名に `lang="en"`、学名に `lang="la"`、オノマトペ `ono-cell-text` は言語別 (`ja`/`en`/`ko`/`zh`)
+- hreflang: トップページ (`/?lang=*`) + 全種ページ (`/?lang=*&id={ID}`) の 5 本 (ja/en/ko/zh/x-default)。種ページの `x-default` は自身の `/species/{ID}/` を指す
+- タップターゲット 44x44 以上: `.filter-btn`, `.lang-tab`, `.modal-close`, `.search-clear` に `min-height: 44px` / 固定 44x44 を明示
+- フォーカス視覚指標: `:focus-visible` に `outline: 2px solid var(--accent)` をグローバル適用。検索ボックスは `.search-input-wrap:focus-within` で枠線 + 3px 半透明リングの二重指標 (SC 2.4.11 Focus Appearance)
+- モーダル: `role="dialog"` + `aria-modal="true"` + `aria-labelledby` + focus trap + `_modalOpener` への前焦点復帰
+- 検索結果件数は `aria-live="polite" aria-atomic="true"` で告知 (4 言語対応)
+- 外部リンク: `rel="noopener"` + `aria-label="... (新しいタブで開く)"` + 視覚的 `↗` マーク
+- フォーム: `<form role="search">` ランドマーク + `<label class="sr-only">` + SVG アイコンは `aria-hidden="true"`
+- IME 対応: `compositionstart`/`compositionend` で検索 debounce をブロック
+
+### セキュリティ
+
+- HTML エスケープ: JS 側は `esc()` (V001 で `'` → `&#39;` を追加)、Python 側は `html.escape()`
+- JSON-LD エスケープ: `_json_for_script()` (scripts/build.py) が `<`/`>`/`&` を `\u003c` `\u003e` `\u0026` に変換し、`</script>` ペイロードによるスクリプトブロック脱出を防止 (OWASP 推奨)
+- 外部リンクは全て `rel="noopener"` 付与
+- URL 構築は `encodeURIComponent()` (JS 側) / `urllib.parse.quote(..., safe="")` (Python 側) で統一
+- Wikipedia リンクは Python / JS いずれも同じエンコード規則を使用 (V011 修正)
+
+### PWA / Service Worker
+
+- `manifest.json`: `lang: "ja"`, `scope: "/"`, `start_url: "/"`, `display: "standalone"`, `theme_color: "#047857"`, icons に `favicon.svg` + 192/512 PNG (`purpose: "any maskable"`)
+- `sw.js`: バージョン名 `koe-zukan-v{YYYY-MM-DD}-{species_count}` で install 時にキャッシュ一掃。fetch は cache-first、ミス時は network-fallback + `resp.ok && GET` のみ遅延キャッシュ
+- navigate リクエストがオフラインでヒットしない場合は `caches.match("/")` にフォールバック (SPA 的挙動)
+- PNG アイコンは precache ではなく fetch 時の遅延キャッシュ (manifest 参照時に Chrome が自動取得)
 
 ## 検索対象フィールド
 

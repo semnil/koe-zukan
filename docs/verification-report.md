@@ -134,3 +134,142 @@
 | S4 (LOW) | 3件 (V005, V007, V012) | 0件 |
 
 未修正 (対応不要/低優先度): V003, V005, V006, V007, V009, V012
+
+---
+
+## 監査ラウンド 1-3 追加検証 (2026-04-17)
+
+UX / 品質の 2 系統で 3 ラウンドの監査を実施。詳細は `docs/ux-audit-report.md` / `docs/quality-audit-report.md` を参照。
+以下は本レポートに V### として統合する主要項目のみ。
+
+### [V013] JSON-LD 文字列に `</script>` 等が未エスケープで埋め込まれる
+- **Severity**: S2 (HIGH) → **修正済み**
+- **Phase**: Code
+- **Location**: scripts/build.py (`_json_for_script`, `generate_species_pages`), templates/species.html:213-225
+- **Technique**: セキュリティレビュー (コンテキスト依存エスケープ)
+- **Scenario**: `json.dumps()` は `"` と `\` はエスケープするが `<`/`>`/`&` は通す。種名や description に `</script>` が含まれると `<script type="application/ld+json">` ブロックから脱出し XSS につながる可能性
+- **Fix**: `_json_for_script()` で `<` → `\u003c`, `>` → `\u003e`, `&` → `\u0026` を追加エスケープ。`JSON_HEADLINE` / `JSON_DESCRIPTION` 経由で注入
+- **Test**: `dist/species/**/*.html` の JSON-LD 文字列値に生の `<`/`>`/`&` が含まれないことを実機検証
+
+### [V014] 種別ページに hreflang が未付与
+- **Severity**: S3 (MEDIUM) → **修正済み**
+- **Phase**: Code
+- **Location**: templates/species.html:23-27
+- **Technique**: 国際化レビュー (Google Search Central hreflang ガイドライン)
+- **Scenario**: 種ページから言語切替したいユーザー・検索エンジンに対して言語バリアントへの参照がなかった
+- **Fix**: `ja` / `en` / `ko` / `zh` / `x-default` の 5 本を追加。`ja`〜`zh` はトップページの `/?lang=*&id={ID}` を、`x-default` は種ページ自身の `/species/{ID}/` を指す
+
+### [V015] PWA マニフェストに 192/512 PNG アイコンが未登録
+- **Severity**: S3 (MEDIUM) → **修正済み**
+- **Phase**: Code
+- **Location**: scripts/build.py (`generate_pwa_icons`, `generate_manifest`), dist/icon-192.png, dist/icon-512.png, dist/manifest.json
+- **Technique**: PWA Installability 要件検証 (Lighthouse PWA audit)
+- **Scenario**: Chrome for Android の「ホーム画面に追加」要件は 192 / 512 サイズの PNG が manifest に存在することを求める。SVG のみでは不足
+- **Fix**: `generate_pwa_icons()` が favicon.svg からシルエットを 80% スケールで中央配置した PNG を 192/512 両方生成。`generate_manifest()` が `icons` 配列に `purpose: "any maskable"` 付きで登録
+
+### [V016] `hasVoice=なし` の種に韓国語・中国語オノマトペが残存
+- **Severity**: S4 (LOW) → **修正済み**
+- **Phase**: Data
+- **Location**: data/animal-sounds-data.xlsx (オノマトペマッピングシート) の 6 種 (A005, R012, F022, F026, F028, V011)
+- **Technique**: 契約検証 (`hasVoice=あり ⇒ onomatopoeia 非空` の対偶)
+- **Scenario**: 「鳴き声なし」と明示されている種で `ko`/`zh` 行が残っており、トップカードと種ページで不整合が発生していた
+- **Fix**: 該当 12 行を Excel から削除。`dist/animals.json` 上で `hasVoice != "あり"` かつ `onomatopoeia` が非空の種は 0 件に収束
+- **Test**: `tests/test_build.py::test_no_voice_species_have_no_onomatopoeia` で契約を固定
+
+### [V017] Service Worker の fetch ハンドラが構文エラーで登録失敗
+- **Severity**: S2 (HIGH) → **修正済み**
+- **Phase**: Code
+- **Location**: scripts/build.py (`generate_sw`)
+- **Technique**: 構文妥当性検査 (`node --check`)
+- **Scenario**: R2 修正で fetch ハンドラに `.catch()` を追加した際に括弧バランスが崩れ、`dist/sw.js` 全体が構文エラーになっていた。SW 登録は失敗するがエラーは console に出るだけでアプリは一見動作する (静かな失敗)
+- **Fix**: `caches.match(...).then(r => r || fetch(...).then(resp => {...}))` のチェーン後に `.catch(() => { navigate なら / を返し、それ以外は 503 })` を正しく閉じる。括弧バランスを `(` 8 / `)` 8、`{` 11 / `}` 11 に整合
+- **Test**: `tests/test_build.py::test_built_sw_is_syntactically_valid` (`node --check` で構文検証) と `test_sw_parens_are_balanced`
+
+### [V018] 孤児オノマトペ (存在しない ID `I033` への参照)
+- **Severity**: S3 (MEDIUM) → **修正済み**
+- **Phase**: Data
+- **Location**: data/animal-sounds-data.xlsx (オノマトペマッピング)
+- **Technique**: 契約検証 (FK 整合性)
+- **Scenario**: メインデータに存在しない `I033` のオノマトペ行がオノマトペマッピングに残っていた
+- **Fix**: 該当行を削除。`animals.json` 内に `I033` 文字列は 0 件
+
+### [V019] 分類マッピング (綱/目/科) の英訳欠落
+- **Severity**: S3 (MEDIUM) → **修正済み**
+- **Phase**: Data
+- **Location**: data/animal-sounds-data.xlsx (分類マッピング)
+- **Technique**: 欠損値検出
+- **Scenario**: `classEN` / `orderEN` / `familyEN` が空の種があり、英語 UI 表示で「—」になるケースがあった
+- **Fix**: 欠落していた全行の英訳を補完。`dist/animals.json` での `classEN`/`orderEN`/`familyEN` 空文字数は全て 0
+
+### [V020] `no-audio.json` に重複エントリ
+- **Severity**: S4 (LOW) → **修正済み**
+- **Phase**: Data
+- **Location**: data/no-audio.json
+- **Technique**: 一意性検査
+- **Scenario**: 手動実行スクリプトの複数回実行で同じ taxonCode が重複追加されていた
+- **Fix**: 重複排除し set 変換後と件数が一致する状態 (110 件) に収束
+
+### [V021] PWA manifest に `lang` / `scope` 未設定
+- **Severity**: S4 (LOW) → **修正済み**
+- **Phase**: Code
+- **Location**: scripts/build.py (`generate_manifest`)
+- **Technique**: PWA 仕様レビュー (w3c/manifest)
+- **Fix**: `"lang": "ja"` と `"scope": "/"` を追加
+
+### [V022] 共有ボタンのラベルに Unicode 数学記号が混入
+- **Severity**: S4 (LOW) → **修正済み**
+- **Phase**: Code
+- **Location**: scripts/build.py (`generate_species_pages` 内の share_html)
+- **Technique**: セキュリティレビュー + A11y レビュー
+- **Scenario**: ラベル文字列に U+1D400〜U+1D7FF の数学記号 (太字ラテン等) が紛れ込んでおり、スクリーンリーダー読み上げと検索インデックスに悪影響
+- **Fix**: 通常の ASCII ラテン文字に置き換え。`dist/**` から U+1D400-1D7FF を 0 件に
+
+### [V023] UX: WCAG 2.1 AA 適合度改善 (コントラスト比 + タッチターゲット + 言語属性)
+- **Severity**: S3 (MEDIUM) 群 → **全項目修正済み**
+- **Phase**: Code
+- **Location**: templates/index.html, templates/species.html
+- **Technique**: WCAG 2.1 AA / 2.2 追加 SC 検査 + コントラスト比数値計算 + タッチターゲット実測
+- **Scenario / Fix**:
+  - SC 1.4.3 Contrast: `#a8a29e` / `#059669` の AA 違反色を廃止し、`#57534e` / `#78716c` / `#047857` に統一。本文は 4.5:1 以上、大テキストも 3:1 以上を確保
+  - SC 2.5.5 / 2.5.8 Target Size: `.filter-btn` / `.lang-tab` / `.modal-close` / `.search-clear` に `min-height: 44px` または固定 44x44 を明示
+  - SC 3.1.2 Language of Parts: カード英名・学名・オノマトペ・モーダル・種ページの全箇所に `lang="en"` / `lang="la"` / `lang="${表示言語}"` を付与
+  - SC 2.4.1 Bypass Blocks: `<a href="#main" class="skip-link">` + `<main id="main">` を両テンプレートに追加
+  - SC 2.4.11 Focus Appearance (2.2 AA): 検索ボックスの `:focus-within` に border + 3px 半透明リングの二重視覚指標
+
+### [V024] ビルド冪等性
+- **Severity**: Informational → **検証完了**
+- **Phase**: Code
+- **Location**: scripts/build.py 全体
+- **Technique**: ビルド冪等性検査 (同日 2 回実行で `dist/**` の SHA-256 ハッシュ一致)
+- **Scenario**: 乱数・タイムスタンプの混入や集合のイテレーション順依存で出力が非決定的になると CD が不安定
+- **Result**: 同日 2 回実行で全ファイルのハッシュが完全一致することを確認
+
+### 監査ラウンド 1-3 の意図的保留項目
+
+以下は監査中に「機能影響なし / 周辺品質の提案レベル」と判定し意図的に保留した項目。必要になった時点で追加 PR で対応する。
+
+| ID | 概要 | 保留理由 |
+|---|---|---|
+| Q005 (R1 継続) | `A` プレフィックスの音声ソース判定が `aid.startswith("B")` に依存 | 現データセットでは `A*` は初期サンプルのみで鳥綱との混同なし |
+| Q006 (R1 継続) | 種ページ URL が Service Worker precache に含まれない | オフライン種ページ閲覧の需要が低い。fetch 時の遅延キャッシュでカバー |
+| Q007 (R1 継続) | `sitemap.xml` の `lastmod` が全 URL 同日 | incremental build 未実装 |
+| L8 (UX R3) | `.share-btn` が 44x44 未達 (~31px) | WCAG 2.5.8 AA (24x24) は満たす。AAA 基準のみ未達 |
+| L9 (UX R3) | `sw.js` の precache に PNG アイコン未登録 | Chrome が manifest 経由で自動取得するため機能影響なし |
+| Info-1 (UX R3) | maskable アイコンの seafzone が 80% で猫耳先端がクリップされる可能性 | 実機マスクで視認性は維持される範囲 |
+| O002 (QA R3) | 種別ページに `<link rel="manifest">` 未付与 | トップ経由なら問題なし |
+| O003 (QA R3) | 種別ページに「鳴き声なし」明示バッジなし | カード一覧側では明示済み |
+
+---
+
+## 総計サマリー (V001-V024, 2026-04-17 時点)
+
+| 重要度 | 件数 | 修正済み | 保留 (機能影響なし) |
+|---|---|---|---|
+| S1 (CRITICAL) | 1 (V001) | 1 | 0 |
+| S2 (HIGH) | 3 (V002, V013, V017) | 3 | 0 |
+| S3 (MEDIUM) | 12 (V003, V004, V006, V008, V009, V010, V011, V014, V015, V018, V019, V023) | 10 | 2 (V003, V006, V009) |
+| S4 (LOW) | 7 (V005, V007, V012, V016, V020, V021, V022) | 4 | 3 (V005, V007, V012) |
+| Informational | 1 (V024) | 検証完了 | — |
+
+S1/S2 は全件修正済み。S3/S4 の保留項目はすべて意図的な Documented 判断 (機能影響ゼロ)。
+UX 監査ラウンド 3 で WCAG 2.1 AA / 2.2 AA SC は全項目 Pass 判定。
