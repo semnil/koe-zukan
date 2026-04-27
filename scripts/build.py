@@ -620,11 +620,9 @@ def generate_species_pages(animals, dist_dir):
 
 
 def generate_sitemap(animals, output_path):
-    """Generate sitemap.xml with top page and deep links for each species."""
+    """Generate sitemap.xml with top page only."""
     today = date.today().isoformat()
     urls = [f'  <url><loc>{SITE_URL}/</loc><lastmod>{today}</lastmod><priority>1.0</priority></url>']
-    for a in animals:
-        urls.append(f'  <url><loc>{SITE_URL}/species/{a["id"]}/</loc><lastmod>{today}</lastmod><priority>0.6</priority></url>')
     xml = ('<?xml version="1.0" encoding="UTF-8"?>\n'
            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
            + "\n".join(urls) + "\n"

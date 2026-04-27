@@ -143,19 +143,12 @@ class TestGenerateSitemap:
         xml = out.read_text(encoding="utf-8")
         assert '<?xml version="1.0"' in xml
         assert f"{build.SITE_URL}/" in xml
-        assert f"{build.SITE_URL}/species/B001/" in xml
-        assert f"{build.SITE_URL}/species/M001/" in xml
+        assert "/species/" not in xml
 
-    def test_sitemap_url_count(self, tmp_path):
+    def test_sitemap_top_page_only(self, tmp_path):
         animals = [{"id": f"X{i:03d}"} for i in range(5)]
         out = tmp_path / "sitemap.xml"
         build.generate_sitemap(animals, out)
-        xml = out.read_text(encoding="utf-8")
-        assert xml.count("<url>") == 6  # top page + 5 species
-
-    def test_sitemap_empty(self, tmp_path):
-        out = tmp_path / "sitemap.xml"
-        build.generate_sitemap([], out)
         xml = out.read_text(encoding="utf-8")
         assert xml.count("<url>") == 1  # top page only
 
@@ -527,15 +520,11 @@ class TestBuildIntegration:
         )
         return root / "dist"
 
-    def test_sitemap_matches_species_filesystem(self, dist):
+    def test_sitemap_has_no_species_urls(self, dist):
         import re
         sitemap = (dist / "sitemap.xml").read_text(encoding="utf-8")
         sm_ids = set(re.findall(r"/species/([^/]+)/", sitemap))
-        fs_ids = {p.name for p in (dist / "species").iterdir() if p.is_dir()}
-        assert sm_ids == fs_ids, (
-            f"sitemap/filesystem mismatch: "
-            f"extra in sitemap={sm_ids - fs_ids}, extra in fs={fs_ids - sm_ids}"
-        )
+        assert not sm_ids, f"sitemap should not contain species URLs: {sm_ids}"
 
     def test_no_unreplaced_placeholders_in_dist(self, dist):
         import re
@@ -604,15 +593,12 @@ class TestBuildIntegration:
         ]
         assert not zero_files, f"Zero-byte OGP: {zero_files[:5]}"
 
-    def test_sitemap_url_count_matches_species_plus_one(self, dist):
+    def test_sitemap_contains_top_page_only(self, dist):
         import re
         sitemap = (dist / "sitemap.xml").read_text(encoding="utf-8")
         urls = re.findall(r"<loc>([^<]+)</loc>", sitemap)
-        with open(dist / "animals.json", encoding="utf-8") as f:
-            animals = json.load(f)
-        assert len(urls) == len(animals) + 1, (
-            f"sitemap URLs={len(urls)} vs species={len(animals)}+1 top"
-        )
+        assert len(urls) == 1, f"sitemap should contain only top page, got {len(urls)} URLs"
+        assert urls[0] == f"{build.SITE_URL}/"
 
     def test_animals_json_ids_unique(self, dist):
         with open(dist / "animals.json", encoding="utf-8") as f:
