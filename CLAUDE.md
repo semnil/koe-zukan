@@ -40,7 +40,7 @@ koe-zukan/
     ├── index.html         ← テンプレートから生成（プレースホルダー置換済み）
     ├── animals.json
     ├── regions.json
-    ├── sitemap.xml        ← Google 用サイトマップ (全種 /species/{ID}/ URL)
+    ├── sitemap.xml        ← Google 用サイトマップ (トップページのみ)
     ├── ogp.png            ← トップページ OGP 画像 (1200x630, Pillow で動的生成)
     ├── icon-192.png       ← PWA アイコン 192x192 (Pillow 動的生成, maskable)
     ├── icon-512.png       ← PWA アイコン 512x512 (Pillow 動的生成, maskable)
@@ -68,7 +68,7 @@ python scripts/build.py
 - `index.html` — テンプレートからプレースホルダーを置換して生成
 - `species/{ID}/index.html` — 個別種ページ (305 ページ、JSON-LD + OGP + 共有ボタン + hreflang 5 本)
 - `species/{ID}/ogp.png` — 種別 OGP 画像 (オノマトペ 4 言語表示、CJK 言語別フォント)
-- `sitemap.xml` — トップページ + 全種の `/species/{ID}/` ディープリンク
+- `sitemap.xml` — トップページのみ (種ページはインデックス効率のため除外)
 - `ogp.png` — トップページ OGP 画像 (Pillow で動的生成、種数・言語数を反映)
 - `icon-192.png` / `icon-512.png` — PWA 用 PNG アイコン (Pillow で `favicon.svg` から動的生成、`purpose: "any maskable"`)
 - `manifest.json` — PWA マニフェスト (`lang`, `scope`, `icons` 配列に SVG + 192/512 PNG を登録)

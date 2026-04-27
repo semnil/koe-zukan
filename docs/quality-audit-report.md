@@ -49,7 +49,7 @@ R3 では R2 の修正内容を再ビルド・実測し、さらに R2 で未検
 | `python3 scripts/build.py` ビルド成功 | OK |
 | 生成物: 種数 305 / オノマトペ **1196** (R2: 1208 → -12) / 言語 4 | OK |
 | `animals.json` / `regions.json` / `index.html` 生成 | OK |
-| `sitemap.xml` URL 数 = 306 (1 top + 305 species) | OK |
+| `sitemap.xml` URL 数 = 1 (トップページのみ、種ページはインデックス効率のため除外) | OK |
 | `species/{ID}/index.html` 305 ファイル生成 | OK |
 | `species/{ID}/ogp.png` 305 ファイル生成（0 バイト なし） | OK |
 | `dist/icon-192.png` / `dist/icon-512.png` 生成、PNG 有効、解像度一致 | **OK (M8 新規検証)** |
@@ -120,7 +120,7 @@ R3 では R2 の修正内容を再ビルド・実測し、さらに R2 で未検
 |---|---|---|
 | Q005 `A` プレフィックス音声参照 | S4 | 時期見て `aid.startswith("B")` を `class == "鳥綱"` に変更。R1 時点で Documented |
 | Q006 SW species URL 非 precache | S4 | オフライン species 閲覧を重視するなら precache 305 URL 追加。R1 時点で Documented |
-| Q007 `sitemap.xml` lastmod 全 URL 同一 | S4 | incremental build 導入するか現状維持。R1 時点で Documented |
+| Q007 `sitemap.xml` lastmod 全 URL 同一 | ~~S4~~ Resolved | サイトマップをトップページのみに削減したため解消 |
 | **O001** SW × manifest PNG 非 precache | Informational | 遅延キャッシュで機能的には OK。precache したい場合は `generate_sw` の URLS に `/icon-192.png` / `/icon-512.png` を追加（qa 責務外） |
 | **O002** 種別ページに manifest link 未付与 | Informational | `templates/species.html` に `<link rel="manifest" href="/manifest.json">` 追加検討 |
 | **O003** 種別ページに「鳴き声なし」明示なし | Informational | `templates/species.html` / `build.py` で `hasVoice=なし` 種にバッジ表示を追加検討 |

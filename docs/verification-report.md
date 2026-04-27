@@ -252,7 +252,7 @@ UX / 品質の 2 系統で 3 ラウンドの監査を実施。詳細は `docs/ux
 |---|---|---|
 | Q005 (R1 継続) | `A` プレフィックスの音声ソース判定が `aid.startswith("B")` に依存 | 現データセットでは `A*` は初期サンプルのみで鳥綱との混同なし |
 | Q006 (R1 継続) | 種ページ URL が Service Worker precache に含まれない | オフライン種ページ閲覧の需要が低い。fetch 時の遅延キャッシュでカバー |
-| Q007 (R1 継続) | `sitemap.xml` の `lastmod` が全 URL 同日 | incremental build 未実装 |
+| ~~Q007~~ | ~~`sitemap.xml` の `lastmod` が全 URL 同日~~ | Resolved: サイトマップをトップページのみに削減 |
 | L8 (UX R3) | `.share-btn` が 44x44 未達 (~31px) | WCAG 2.5.8 AA (24x24) は満たす。AAA 基準のみ未達 |
 | L9 (UX R3) | `sw.js` の precache に PNG アイコン未登録 | Chrome が manifest 経由で自動取得するため機能影響なし |
 | Info-1 (UX R3) | maskable アイコンの seafzone が 80% で猫耳先端がクリップされる可能性 | 実機マスクで視認性は維持される範囲 |
