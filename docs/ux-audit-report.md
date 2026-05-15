@@ -227,3 +227,29 @@ Google Search Central ガイドラインでは許容される混在パターン�
 - 累積 Fix 件数 20 件 / 新規発見 3 件 (Low 2, Info 1) のうち重要なものなし
 
 残課題はすべて「無視可能レベル」であり、本ラウンドをもって UX 監査プロセスの完了を判定する。将来的に share-btn を含むボタン群を 44px 統一する PR と、sw.js のプリキャッシュ拡張 PR を追加で回せば AAA 級の品質になる。
+
+---
+
+## 機能拡張ラウンド (2026-05-16, 詳細ページ多言語化に伴う UI 変更)
+
+詳細ページの 4 言語化と SEO 強化に伴う UI 変更点を以下に記録する。WCAG 適合状態は維持。
+
+### UI 変更
+- **言語タブの位置を両ページで統一**: index.html はヘッダー (`.header-inner` の右側)、species.html は top-bar の右側に配置。緑グラデーション帯上の半透明枠スタイル + `min-height: 44px` で揃え、index.html の stats-bar からは件数表示のみが残る。
+- **species.html の全テキスト 4 言語化**: skip link / top-bar / 各セクション見出し / `.detail-label` / 共有ボタン aria-label / 外部リンク aria-label / 関連種グリッド / IUCN 保全状況 9 訳 / コピーボタンのフィードバック (3 状態) すべて `applyLang()` で書き換え。
+- **言語フォールバック**: 非対応ロケール (fr / de / es 等) は ja → **en に変更**。CJK が読めない訪問者の体験を優先。
+- **`<html lang>` の同期**: species.html も index.html と同じく JS で表示言語に同期。初期値は `ja` (SEO / no-JS 訪問者向け)。
+- **lang 引き継ぎ**: index↔species のすべてのリンク (`species-detail-link` / top-bar / back-link / 関連種) で `?lang=<xx>` を引き継ぎ。ja は canonical 維持で無付与。
+- **hreflang の整合化**: 種ページの hreflang を `/?lang=*&id={ID}` (index にリダイレクトしていた) → `/species/{ID}/?lang=*` (種ページ自身) に変更。Google の hreflang 仕様 (自己参照を含む全言語版を相互リンク) に厳密適合。
+- **トップページに canonical 追加 + WebSite JSON-LD**: SEO カノニカル戦略強化 (詳細は verification-report の V027)。
+
+### WCAG 影響評価
+
+- 1.3.1, 2.4.1, 2.4.3, 2.4.6, 2.4.7, 4.1.2: 構造は維持、テキストのみ書き換え → 維持
+- 2.4.11 (Focus Appearance, 2.2 AA): 言語タブの新スタイルにも `:focus-visible` グローバル outline が適用される → 維持
+- 2.5.8 (Target Size Minimum, 2.2 AA): 両ページの `.lang-tab` が `min-height: 44px` で揃った → 維持
+- 3.1.1 (Language of Page): JS で `<html lang>` 更新 → 維持
+- 3.1.2 (Language of Parts): 種ページの `.en-name` 要素も `lang="ja"` / `lang="en"` に切替えるよう変更 → 維持
+- 3.2.5 (Change on Request, AAA): 言語タブクリック時のみ書き換え、自動再読み込みなし → 維持
+
+WCAG 2.1 AA / 2.2 AA SC は引き続き全項目 Pass 判定。SC 2.5.5 (AAA, share-btn 44px 未達) は L8 のまま残存。

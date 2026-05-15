@@ -107,8 +107,10 @@ python scripts/build.py
 | `{{SHARE_BUTTONS}}` | 共有ボタン HTML (X/Facebook/LINE/URL コピー) |
 | `{{RELATED_SPECIES}}` | 同じ仲間の動物セクション HTML (family→order→class→phylum の 4 段フォールバック、最大 4 件、ID 昇順) |
 | `{{JSON_HEADLINE}}`, `{{JSON_DESCRIPTION}}` | JSON-LD 用に `<`/`>`/`&` を `\u003c` 等にエスケープした文字列 |
+| `{{SPECIES_DATA_JSON}}` | 種ページ用 i18n ペイロード (name/class/order/family/voiceMethod/regions の ja+en、conservation コード、4 言語 onomatopoeia 等)。インライン `<script>` 用に `<`/`>`/`&` を `\u003c` 等にエスケープした JSON リテラル |
+| `{{RELATED_DATA_JSON}}` | 関連種の i18n ペイロード (各種の ja/en 名前 + ja/en/ko/zh オノマトペ)。同様に `<script>` 安全な JSON リテラル |
 
-未置換プレースホルダーはビルド時に警告出力される (`_apply_placeholders`)。`SHARE_BUTTONS` / `RELATED_SPECIES` は警告対象から除外し、後段で個別注入する。
+未置換プレースホルダーはビルド時に警告出力される (`_apply_placeholders`)。`SHARE_BUTTONS` は警告対象から除外し、後段で個別注入する (`RELATED_SPECIES` は `_build_related_html` 経由で値を渡すため通常置換)。
 
 ## デプロイ
 
@@ -154,14 +156,17 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
 - 完全静的サイト（バックエンド不要）
 - フロントエンド検索: Fuse.js（CDN読み込み）
 - ひらがな検索: カタカナ→ひらがな自動変換で「ねこ」「にゃー」等のひらがな入力に対応
-- ブラウザ言語自動検出: `navigator.language` で初期表示言語を ja/en/ko/zh から自動選択 (URL `?lang=` パラメータが優先)
+- ブラウザ言語自動検出: `navigator.language` で初期表示言語を ja/en/ko/zh から自動選択 (URL `?lang=` パラメータが最優先)。**非対応ロケールのフォールバックは英語** (フランス語・ドイツ語等の非 CJK 訪問者が読めない漢字を見ないため)。index.html / species.html の両方で同じ判定ロジック
+- 詳細ページの多言語化: `/species/{ID}/` も 4 言語対応。`SPECIES_DATA` (build.py が name/class/order/family/voiceMethod/regions の ja+en、4 言語 onomatopoeia 等を埋め込み) と `I18N` 辞書 (ラベル + IUCN 保全状況訳) を組み合わせて DOM を書き換え。初期 HTML は日本語のまま (SEO / no-JS 訪問者向け)、JS が選択言語で上書き
+- 言語タブの位置 (両ページ統一): index.html はヘッダー (`.header-inner` の右側)、species.html は top-bar の `←` リンクの右側。緑グラデーション帯上の半透明枠スタイルで揃え、`min-height: 44px` でタップターゲットも統一
+- index↔species 間で表示言語を引き継ぐ: モーダルの「詳細ページで見る」「← 動物の鳴き声図鑑」「← 図鑑で表示」「同じ仲間の動物」内リンクに `?lang=<xx>` を付与 (ja のときは canonical 維持で付けない)
 - データ: ビルド時にExcel→JSON変換、ページロード時にfetchしてインメモリ検索
 - レスポンシブ対応（モバイル含む）
 - OGP / Twitter Card 対応（トップページ + 個別種ページ、CJK 言語別フォント）
-- 個別種ページ: `/species/{ID}/` (305 ページ、JSON-LD 構造化データ、canonical URL、hreflang ja/en/ko/zh/x-default)
-- 共有ボタン: X (Twitter), Facebook, LINE, URLコピー（種ページのみ）
+- 個別種ページ: `/species/{ID}/` (305 ページ、JSON-LD 構造化データ、canonical URL、hreflang ja/en/ko/zh/x-default は自身の `/species/{ID}/?lang=*` を指す)
+- 共有ボタン: X (Twitter), Facebook, LINE, URLコピー（種ページのみ。各 aria-label とコピーフィードバックは表示言語に追従）
 - PWA 対応: manifest.json + Service Worker (キャッシュファースト、192/512 PNG アイコン maskable)
-- URL パラメータ `?id=` でカード直接リンク
+- URL パラメータ `?id=` でカード直接リンク、`?q=` で初期検索クエリ (`WebSite` JSON-LD の SearchAction `urlTemplate` 契約)
 - Google Search Console 連携 (サイトマップ + 所有権確認メタタグ)
 - 関連種リンク: 種ページに「同じ仲間の動物」セクション (family→order→class→phylum の 4 段フォールバック、最大 4 件) — SEO 内部リンク強化
 
@@ -184,7 +189,8 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
 - `NO_ONO_LABEL` — 「データなし」4 言語
 - `MODAL_LABELS` — モーダル内ラベル (ono / info / voiceMethod / conservation / regions) 4 言語
 - `MODAL_HINT` / `CLOSE_LABEL` — モーダル操作ヒント 4 言語
-- `VOICE_METHOD_EN` — 発声方法の日本語→英語マップ (27 エントリ)
+- `DETAIL_LINK_LABEL` — モーダル内「詳細ページで見る →」のテキスト 4 言語
+- `VOICE_METHOD_EN` — 発声方法の日本語→英語マップ (27 エントリ。`scripts/build.py` の同名定数とミラー)
 - `ALL_LABEL` — フィルタ「すべて」4 言語
 - `SEARCH_LABELS` — 検索ボックス全要素 (label / placeholder / hint / clear / filters / langTabs / noResults / loading / loadError) 4 言語
 - `getDisplayName(a)` — `displayLang` に応じた名前返却
@@ -193,13 +199,48 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
 - `getRegionName(r)` — `displayLang` に応じた地域名
 - `updateFilterLabels()` / `updateSearchLabels()` — `applyDisplayLang` から呼び出される UI 更新
 
+### 多言語 UI 定数 (species.html)
+
+詳細ページは自己完結型で 4 言語切替できる。`applyLang(code)` が呼ばれると下記すべてを再適用する。
+
+- `I18N[code]` — 1 言語あたり以下を持つ:
+  - `htmlLang`, `siteName`, `title(name, alt)` — `<html lang>`、サイト名、`<title>` ビルダー
+  - `skipLink`, `topBar`, `backLink` — ナビゲーション系テキスト
+  - `onoSection`, `infoSection`, `linksSection`, `shareSection`, `related`, `note` — セクション見出し
+  - `voiceMethod`, `conservation`, `regions` — `.detail-label` のテキスト
+  - `langTabsLabel`, `siteNav`, `silentDash`, `noVoice` — その他ラベル
+  - `copyLabel`, `copyOk`, `copyFail` — URL コピーボタンの 3 状態
+  - `shareX`, `shareFB`, `shareLINE` — 共有ボタン aria-label
+  - `ariaCommons`, `ariaXC`, `ariaML`, `ariaWikiJA`, `ariaWikiEN` — 外部リンク aria-label
+  - `iucnLabel` — IUCN 保全状況 9 コードの訳辞書 (LC/NT/VU/EN/CR/DD/NE/EW/EX)
+- `SPECIES_DATA` — 種固有データ (build.py 由来、上記プレースホルダー参照)。`applyLang` 時の値ソース
+- `RELATED_DATA` — 関連種データ。`applyLang` 時に `.related-grid` を再描画
+- DOM マーカー (build.py 側で付与):
+  - `data-i18n="<key>"` — テキスト書き換え対象 (`L[key]` で textContent 置換)
+  - `data-link-kind="commons|xc|ml|wiki-ja|wiki-en"` — 外部リンクの aria-label 切替対象
+  - `data-share-kind="x|fb|line|copy"` — 共有ボタンの aria-label 切替対象 (`copy` は内部の `.copy-label` span を書き換え)
+- ヘルパー: `detectLang()` (`?lang=` → `navigator.language` → en フォールバック)、`withLang(path, code)` (リンクへの lang 付与、ja のときは canonical 維持で無付与)、`renderLangTabs()` (top-bar 内の言語タブ生成)
+
+### SEO 設定
+
+- canonical URL:
+  - トップページ: `<link rel="canonical" href="https://koe-zukan.semnil.com/">` — `?lang=` / `?id=` / `?q=` の各バリエーションを `/` に正規化
+  - 種ページ: `<link rel="canonical" href=".../species/{ID}/">` — `?lang=` 付き URL を正規化
+- 構造化データ (JSON-LD):
+  - トップページ: `@type: WebSite` (name / alternateName / url / description / `inLanguage: [ja, en, ko, zh]` / `potentialAction: SearchAction`)。Google の Sitelinks Search Box 対象
+  - SearchAction の `urlTemplate` は `https://koe-zukan.semnil.com/?q={search_term_string}` で、index.html の JS が `?q=` を受けて検索ボックスに投入 + `onSearch()` を実行
+  - 種ページ: `@type: Article` (headline / description / url / publisher)。文字列は `_json_for_script()` で `<`/`>`/`&` を `<` 等にエスケープ済み
+- サイトマップ: `dist/sitemap.xml` はトップページ 1 URL のみ。種ページは内部リンク (モーダル → 種ページ + 関連種) で発見可能だがサイトマップ非掲載
+  - 理由: 種ページは「クロール済み - インデックス未登録」が大量発生したため除外 (コミット `8f76bf3` の方針)
+- meta description / OGP / Twitter Card は両ページに設定。og:locale は初期 HTML が `ja_JP`、JS が選択言語に応じて `ja_JP` / `en_US` / `ko_KR` / `zh_CN` に書き換え (Bot は初期 HTML を参照するため SEO 影響は限定的)
+
 ### アクセシビリティ
 
 - WCAG 2.1 AA および WCAG 2.2 追加 AA SC 適合 (UX 監査ラウンド 3 で全項目 Pass 判定)
 - `<main id="main">` ランドマーク + `.skip-link`「コンテンツへスキップ」(index + species 両テンプレート)
-- `<html lang>` はトップページで表示言語切替に同期、種ページは `lang="ja"` 固定
-- 局所 `lang` 属性: 英名に `lang="en"`、学名に `lang="la"`、オノマトペ `ono-cell-text` は言語別 (`ja`/`en`/`ko`/`zh`)
-- hreflang: トップページ (`/?lang=*`) + 全種ページ (`/?lang=*&id={ID}`) の 5 本 (ja/en/ko/zh/x-default)。種ページの `x-default` は自身の `/species/{ID}/` を指す
+- `<html lang>` は両ページとも表示言語切替に JS で同期 (初期値は `ja`)
+- 局所 `lang` 属性: 英名に `lang="en"`、学名に `lang="la"`、オノマトペ `ono-cell-text` は言語別 (`ja`/`en`/`ko`/`zh`)、種ページの「alt-name」要素は表示言語に応じて `lang="ja"`/`lang="en"` に切替
+- hreflang: トップページ (`/?lang=*`) + 全種ページ (`/species/{ID}/?lang=*`) の 5 本 (ja/en/ko/zh/x-default)。両ページの `x-default` は canonical URL (パラメータなし) を指す
 - タップターゲット 44x44 以上: `.filter-btn`, `.lang-tab`, `.modal-close`, `.search-clear` に `min-height: 44px` / 固定 44x44 を明示
 - フォーカス視覚指標: `:focus-visible` に `outline: 2px solid var(--accent)` をグローバル適用。検索ボックスは `.search-input-wrap:focus-within` で枠線 + 3px 半透明リングの二重指標 (SC 2.4.11 Focus Appearance)
 - モーダル: `role="dialog"` + `aria-modal="true"` + `aria-labelledby` + focus trap + `_modalOpener` への前焦点復帰

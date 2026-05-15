@@ -292,3 +292,46 @@ SEO・UX 改善を目的とした機能追加と多言語 UI 全面対応。
 S1/S2 は全件修正済み。S3/S4 の保留項目はすべて意図的な Documented 判断 (機能影響ゼロ)。
 UX 監査ラウンド 3 で WCAG 2.1 AA / 2.2 AA SC は全項目 Pass 判定。
 V025: 関連種リンク・コンテンツ差別化・全 UI 多言語対応 (機能追加、テスト 114 件 Pass)。
+
+---
+
+## 機能拡張ラウンド (2026-05-16, 詳細ページ多言語化 + SEO 強化)
+
+### [V026] 詳細ページの 4 言語化と表示言語の引き継ぎ
+- **Severity**: Informational → **実装済み**
+- **Phase**: Code
+- **Location**: `scripts/build.py`, `templates/species.html`, `templates/index.html`
+- **Technique**: i18n DOM 書き換え設計、Bot vs JS クライアントの責務分離、契約レビュー
+- **変更内容**:
+  1. **詳細ページの 4 言語切替**: `templates/species.html` に `I18N` 辞書 (ラベル + IUCN 9 訳) を追加し、`applyLang(code)` で全テキスト・aria-label・関連種グリッドを書き換え。初期 HTML は日本語のまま (SEO / no-JS 訪問者向け)
+  2. **データ埋め込み**: `scripts/build.py` に `_build_species_payload` / `_build_related_payload` / `_json_for_inline_script` を追加。種固有データ (`SPECIES_DATA`) と関連種データ (`RELATED_DATA`) を `<script>` 安全な JSON (`<` `>` `&` を `<` `>` `&` にエスケープ) として種ページに埋め込み
+  3. **DOM マーカー**: `data-i18n` (テキスト) / `data-link-kind` (外部リンク aria-label) / `data-share-kind` (共有ボタン aria-label + コピーラベル) を build.py 側で付与し、`applyLang` から汎用的にアクセス
+  4. **言語フォールバックを ja → en に変更**: `index.html` / `species.html` 共通で、URL `?lang=` → `navigator.language` → 英語フォールバック。フランス語・ドイツ語等の非 CJK 訪問者が読めない漢字を見ないため
+  5. **言語タブの位置統一**: `index.html` のヘッダー (`.header-inner` の右側) と `species.html` の top-bar 内に配置。緑グラデーション帯上の半透明枠スタイル + `min-height: 44px` で統一 (WCAG 2.1 AA タップターゲット維持)
+  6. **lang 引き継ぎリンク**: index→species (`<a class="species-detail-link" href="/species/{ID}/?lang=<xx>">`)、species→index (top-bar `← 動物の鳴き声図鑑`、back-link `← 図鑑で表示`)、species→species (関連種グリッド) で `?lang=` を引き継ぎ。ja は canonical 維持で付与しない
+  7. **hreflang の整合化**: 種ページの hreflang を `/?lang=*&id={ID}` → `/species/{ID}/?lang=*` に変更し、ページ自身を指すよう統一
+- **テスト**: `tests/test_build.py` に `TestSpeciesPageI18nPayload` (11) + `TestJsonForInlineScript` (3)、`tests/test_frontend.mjs` に `withLang` (4) + `detail link` (2) を追加。`detectLang` の期待値も `ja` → `en` フォールバックに更新
+
+### [V027] SEO 正規化: canonical + WebSite JSON-LD + SearchAction
+- **Severity**: S3 (MEDIUM) → **修正済み**
+- **Phase**: Code
+- **Location**: `templates/index.html` head
+- **Technique**: 重複コンテンツ分析、Schema.org 適合確認
+- **Scenario**: トップページに canonical が無く、`?lang=` / `?id=` / `?q=` バリエーションが重複コンテンツとして扱われる可能性。サイト内検索もクローラに認識されていなかった
+- **Root Cause**: index.html テンプレートに `<link rel="canonical">` および `@type: WebSite` JSON-LD が未設定
+- **Fix**:
+  - `<link rel="canonical" href="https://koe-zukan.semnil.com/">` を追加
+  - `@type: WebSite` JSON-LD を追加 (name / alternateName / url / description / `inLanguage` / `potentialAction: SearchAction`)
+  - SearchAction の `urlTemplate` は `.../?q={search_term_string}`。index.html の JS が `?q=` を受けて検索ボックスに投入 + `onSearch()` を実行 (Google Sitelinks Search Box の契約遵守)
+- **テスト**: `TestIndexSeoMetadata` 3 件 (canonical 存在 / WebSite JSON-LD parse / SearchAction 仕様適合)
+
+### サマリー追補
+
+V025 以降の累積:
+
+| 重要度 | 件数 | 修正済み |
+|---|---|---|
+| S3 (MEDIUM) | +1 (V027) | 1 |
+| Informational | +2 (V025, V026) | 実装完了 |
+
+テスト件数: build.py 130 件 / frontend 58 件 (= 188 件全 Pass)。
