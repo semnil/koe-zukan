@@ -478,6 +478,64 @@ CLASS_INFO = {
 }
 
 
+def _build_related_species(current, animals, count=4):
+    """Return up to count related animals (self excluded), ID-sorted.
+
+    Fallback chain: same family → same order → same class → same phylum.
+    """
+    aid = current["id"]
+    family = current.get("family", "")
+    order = current.get("order", "")
+    class_ = current.get("class", "")
+    phylum = current.get("phylum", "")
+
+    candidates = [a for a in animals if a["id"] != aid and a.get("family") == family] if family else []
+
+    if len(candidates) < count and order:
+        used = {a["id"] for a in candidates}
+        candidates += [
+            a for a in animals
+            if a["id"] != aid and a["id"] not in used and a.get("order") == order
+        ]
+
+    if len(candidates) < count and class_:
+        used = {a["id"] for a in candidates}
+        candidates += [
+            a for a in animals
+            if a["id"] != aid and a["id"] not in used and a.get("class") == class_
+        ]
+
+    if len(candidates) < count and phylum:
+        used = {a["id"] for a in candidates}
+        candidates += [
+            a for a in animals
+            if a["id"] != aid and a["id"] not in used and a.get("phylum") == phylum
+        ]
+
+    candidates.sort(key=lambda a: a["id"])
+    return candidates[:count]
+
+
+def _build_related_html(related, esc):
+    """Build 同じ仲間の動物 section HTML from a list of animal dicts."""
+    if not related:
+        return ""
+    items = []
+    for r in related:
+        ono = r.get("onomatopoeiaJA", "") or ""
+        ono_span = f'<span class="related-ono">{esc(ono)}</span>' if ono else ""
+        items.append(
+            f'<a href="/species/{esc(r["id"])}/" class="related-item">'
+            f'<span class="related-name">{esc(r["nameJA"])}</span>{ono_span}</a>'
+        )
+    return (
+        '<div class="detail-section">'
+        '<h3>同じ仲間の動物</h3>'
+        f'<div class="related-grid">{"".join(items)}</div>'
+        '</div>'
+    )
+
+
 def generate_species_pages(animals, dist_dir):
     """Generate individual HTML pages for each species at /species/{id}/index.html."""
     if not SPECIES_TEMPLATE.exists():
@@ -570,6 +628,7 @@ def generate_species_pages(animals, dist_dir):
         json_headline = _json_for_script(json_headline_text)
         json_desc = _json_for_script(desc)
         class_info = CLASS_INFO.get(a.get("class", ""), {"icon": "🔹", "css": "class-other"})
+        related = _build_related_species(a, animals)
         page = _apply_placeholders(template, {
             "SITE_URL": SITE_URL,
             "ID": esc(aid),
@@ -591,6 +650,7 @@ def generate_species_pages(animals, dist_dir):
             "LINKS": links_html,
             "JSON_HEADLINE": json_headline,
             "JSON_DESCRIPTION": json_desc,
+            "RELATED_SPECIES": _build_related_html(related, esc),
         }, skip_warn={"SHARE_BUTTONS"})
 
         # Share buttons

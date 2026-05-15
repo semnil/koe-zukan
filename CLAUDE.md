@@ -105,9 +105,10 @@ python scripts/build.py
 | `{{ONO_SECTION}}` | オノマトペセクション HTML (各 `ono-cell-text` に `lang` 属性付与) |
 | `{{LINKS}}` | 外部リンク HTML (`aria-label`, `rel="noopener"`, 視覚的 `↗` マーク付き) |
 | `{{SHARE_BUTTONS}}` | 共有ボタン HTML (X/Facebook/LINE/URL コピー) |
+| `{{RELATED_SPECIES}}` | 同じ仲間の動物セクション HTML (family→order→class→phylum の 4 段フォールバック、最大 4 件、ID 昇順) |
 | `{{JSON_HEADLINE}}`, `{{JSON_DESCRIPTION}}` | JSON-LD 用に `<`/`>`/`&` を `\u003c` 等にエスケープした文字列 |
 
-未置換プレースホルダーはビルド時に警告出力される (`_apply_placeholders`)。`SHARE_BUTTONS` は警告対象から除外し、後段で個別注入する。
+未置換プレースホルダーはビルド時に警告出力される (`_apply_placeholders`)。`SHARE_BUTTONS` / `RELATED_SPECIES` は警告対象から除外し、後段で個別注入する。
 
 ## デプロイ
 
@@ -158,10 +159,39 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
 - レスポンシブ対応（モバイル含む）
 - OGP / Twitter Card 対応（トップページ + 個別種ページ、CJK 言語別フォント）
 - 個別種ページ: `/species/{ID}/` (305 ページ、JSON-LD 構造化データ、canonical URL、hreflang ja/en/ko/zh/x-default)
-- 共有ボタン: X (Twitter), Facebook, LINE, URLコピー（モーダル + 種ページ両方）
+- 共有ボタン: X (Twitter), Facebook, LINE, URLコピー（種ページのみ）
 - PWA 対応: manifest.json + Service Worker (キャッシュファースト、192/512 PNG アイコン maskable)
 - URL パラメータ `?id=` でカード直接リンク
 - Google Search Console 連携 (サイトマップ + 所有権確認メタタグ)
+- 関連種リンク: 種ページに「同じ仲間の動物」セクション (family→order→class→phylum の 4 段フォールバック、最大 4 件) — SEO 内部リンク強化
+
+### コンテンツ差別化設計 (カード / モーダル / 種ページ)
+
+| 項目 | カード | モーダル (プレビュー) | 種ページ (詳細) |
+|---|---|---|---|
+| 名前 | 和名 or 表示言語 | 表示言語 | 和名 + 英名 + 学名 |
+| 綱/目/科 タグ | 綱のみ (アイコン付き) | 綱のみ | 綱/目/科 全階層 |
+| オノマトペ | 表示言語 main のみ | 表示言語 (場面なし) | 4 言語 + 場面 |
+| 外部リンク | なし | なし | あり (Wikipedia / xeno-canto / ML) |
+| 共有ボタン | なし | なし | あり (X/Facebook/LINE/URLコピー) |
+| 保全状況 | — | コードのみ | コード + 日本語ラベル |
+| 関連種 | なし | なし | あり |
+| 詳細リンク | あり (モーダル内) | あり (「詳細ページで見る →」) | — (自ページ) |
+
+### 多言語 UI 定数 (index.html)
+
+- `NO_VOICE_LABEL` — 「鳴き声なし」4 言語
+- `NO_ONO_LABEL` — 「データなし」4 言語
+- `MODAL_LABELS` — モーダル内ラベル (ono / info / voiceMethod / conservation / regions) 4 言語
+- `MODAL_HINT` / `CLOSE_LABEL` — モーダル操作ヒント 4 言語
+- `VOICE_METHOD_EN` — 発声方法の日本語→英語マップ (27 エントリ)
+- `ALL_LABEL` — フィルタ「すべて」4 言語
+- `SEARCH_LABELS` — 検索ボックス全要素 (label / placeholder / hint / clear / filters / langTabs / noResults / loading / loadError) 4 言語
+- `getDisplayName(a)` — `displayLang` に応じた名前返却
+- `getClassLabel(ci, a)` — `displayLang` に応じた綱ラベル
+- `getVoiceMethod(vm)` — `displayLang` に応じた発声方法
+- `getRegionName(r)` — `displayLang` に応じた地域名
+- `updateFilterLabels()` / `updateSearchLabels()` — `applyDisplayLang` から呼び出される UI 更新
 
 ### アクセシビリティ
 

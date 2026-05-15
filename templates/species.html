@@ -205,6 +205,26 @@ footer {
 @media (max-width: 480px) {
   .ono-grid { grid-template-columns: repeat(2, 1fr); }
 }
+.related-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+.related-item {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.75rem;
+  background: var(--hover);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--text);
+  min-height: 44px;
+  justify-content: center;
+}
+.related-item:hover { background: var(--accent-light); border-color: var(--accent); }
+.related-name { font-size: 0.9rem; font-weight: 600; }
+.related-ono { font-size: 0.85rem; color: var(--accent); font-weight: 700; }
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -262,6 +282,8 @@ footer {
         {{SHARE_BUTTONS}}
       </div>
     </div>
+
+    {{RELATED_SPECIES}}
   </div>
 
   <a href="/?id={{ID}}" class="back-link">← 図鑑で表示</a>

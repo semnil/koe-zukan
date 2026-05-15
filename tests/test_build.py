@@ -317,6 +317,168 @@ class TestGenerateSpeciesPages:
         page = (tmp_path / "species" / "B001" / "index.html").read_text(encoding="utf-8")
         assert '/?id=B001' in page
 
+    def test_species_page_related_section_present(self, tmp_path):
+        """Related species section must appear when siblings exist."""
+        sibling = self._make_animal("B002")
+        sibling["nameJA"] = "ニワトリ"
+        sibling["onomatopoeiaJA"] = "コケコッコ"
+        animal = self._make_animal("B001")
+        build.generate_species_pages([animal, sibling], tmp_path)
+        page = (tmp_path / "species" / "B001" / "index.html").read_text(encoding="utf-8")
+        assert "同じ仲間の動物" in page
+        assert "/species/B002/" in page
+        assert "ニワトリ" in page
+        assert "コケコッコ" in page
+
+    def test_species_page_related_excludes_self(self, tmp_path):
+        animal = self._make_animal("B001")
+        sibling = self._make_animal("B002")
+        sibling["nameJA"] = "ニワトリ"
+        sibling["onomatopoeiaJA"] = "コケコッコ"
+        build.generate_species_pages([animal, sibling], tmp_path)
+        page = (tmp_path / "species" / "B001" / "index.html").read_text(encoding="utf-8")
+        # The related-item link must not point to self
+        assert 'class="related-item" href="/species/B001/"' not in page
+
+    def test_species_page_related_no_ono_renders(self, tmp_path):
+        """Related item with empty onomatopoeiaJA must not crash."""
+        sibling = self._make_animal("B002")
+        sibling["nameJA"] = "ニワトリ"
+        sibling["onomatopoeiaJA"] = ""
+        animal = self._make_animal("B001")
+        build.generate_species_pages([animal, sibling], tmp_path)
+        page = (tmp_path / "species" / "B001" / "index.html").read_text(encoding="utf-8")
+        assert "ニワトリ" in page
+
+
+# ── _build_related_species ──────────────────────────────
+
+class TestBuildRelatedSpecies:
+    def _a(self, aid, family, order, ono="", class_="鳥綱", phylum="脊索動物門"):
+        return {"id": aid, "family": family, "order": order, "class": class_, "phylum": phylum, "onomatopoeiaJA": ono}
+
+    def test_same_family_returned(self):
+        animals = [
+            self._a("B001", "スズメ科", "スズメ目"),
+            self._a("B002", "スズメ科", "スズメ目"),
+            self._a("M001", "ネコ科", "食肉目", class_="哺乳綱", phylum="節足動物門"),
+        ]
+        related = build._build_related_species(animals[0], animals)
+        ids = [r["id"] for r in related]
+        assert "B002" in ids
+        assert "M001" not in ids
+
+    def test_self_excluded(self):
+        animals = [self._a("B001", "スズメ科", "スズメ目")]
+        related = build._build_related_species(animals[0], animals)
+        assert not any(r["id"] == "B001" for r in related)
+
+    def test_id_order_sorted(self):
+        animals = [
+            self._a("B003", "スズメ科", "スズメ目"),
+            self._a("B001", "スズメ科", "スズメ目"),
+            self._a("B002", "スズメ科", "スズメ目"),
+        ]
+        related = build._build_related_species(animals[0], animals)
+        assert [r["id"] for r in related] == ["B001", "B002"]
+
+    def test_max_four_returned(self):
+        animals = [self._a(f"B{i:03d}", "スズメ科", "スズメ目") for i in range(10)]
+        related = build._build_related_species(animals[0], animals)
+        assert len(related) <= 4
+
+    def test_order_fallback_when_family_alone(self):
+        animals = [
+            self._a("B001", "ユニーク科", "スズメ目"),
+            self._a("B002", "別の科", "スズメ目"),
+            self._a("M001", "ネコ科", "食肉目", class_="哺乳綱", phylum="節足動物門"),
+        ]
+        related = build._build_related_species(animals[0], animals)
+        ids = [r["id"] for r in related]
+        assert "B002" in ids
+        assert "M001" not in ids
+
+    def test_fallback_fills_up_to_four(self):
+        # 1 same-family sibling + 5 same-order siblings → total 4
+        animals = (
+            [self._a("B001", "ユニーク科", "スズメ目")]
+            + [self._a(f"B{i:03d}", "スズメ科", "スズメ目") for i in range(2, 8)]
+        )
+        related = build._build_related_species(animals[0], animals)
+        assert len(related) == 4
+
+    def test_empty_family_uses_order_only(self):
+        animals = [
+            self._a("B001", "", "スズメ目"),
+            self._a("B002", "スズメ科", "スズメ目"),
+        ]
+        related = build._build_related_species(animals[0], animals)
+        assert any(r["id"] == "B002" for r in related)
+
+    def test_class_fallback_when_order_alone(self):
+        animals = [
+            self._a("B001", "ユニーク科", "ユニーク目", class_="鳥綱"),
+            self._a("B002", "スズメ科", "スズメ目", class_="鳥綱"),
+            self._a("M001", "ネコ科", "食肉目", class_="哺乳綱", phylum="節足動物門"),
+        ]
+        related = build._build_related_species(animals[0], animals)
+        ids = [r["id"] for r in related]
+        assert "B002" in ids
+        assert "M001" not in ids
+
+    def test_phylum_fallback_when_class_alone(self):
+        animals = [
+            self._a("V001", "ユニーク科", "ユニーク目", class_="ユニーク綱", phylum="軟体動物門"),
+            self._a("V002", "別の科", "別の目", class_="別の綱", phylum="軟体動物門"),
+            self._a("M001", "ネコ科", "食肉目", class_="哺乳綱", phylum="脊索動物門"),
+        ]
+        related = build._build_related_species(animals[0], animals)
+        ids = [r["id"] for r in related]
+        assert "V002" in ids
+        assert "M001" not in ids
+
+    def test_no_family_no_order_no_class_no_phylum_returns_empty(self):
+        animals = [
+            self._a("B001", "", "", class_="", phylum=""),
+            self._a("B002", "スズメ科", "スズメ目", class_="鳥綱"),
+        ]
+        related = build._build_related_species(animals[0], animals)
+        assert related == []
+
+
+# ── _build_related_html ──────────────────────────────────
+
+class TestBuildRelatedHtml:
+    def _a(self, aid, name, ono=""):
+        return {"id": aid, "nameJA": name, "onomatopoeiaJA": ono}
+
+    def test_empty_list_returns_empty_string(self):
+        assert build._build_related_html([], html_mod.escape) == ""
+
+    def test_contains_heading(self):
+        html = build._build_related_html([self._a("B001", "スズメ", "チュン")], html_mod.escape)
+        assert "同じ仲間の動物" in html
+
+    def test_contains_name_and_ono(self):
+        html = build._build_related_html([self._a("B001", "スズメ", "チュン")], html_mod.escape)
+        assert "スズメ" in html
+        assert "チュン" in html
+
+    def test_link_href_format(self):
+        html = build._build_related_html([self._a("B001", "スズメ")], html_mod.escape)
+        assert 'href="/species/B001/"' in html
+
+    def test_no_ono_span_when_empty(self):
+        html = build._build_related_html([self._a("B001", "スズメ", "")], html_mod.escape)
+        assert "related-ono" not in html
+
+    def test_html_escaping_in_name(self):
+        html = build._build_related_html(
+            [self._a("X001", '<script>alert(1)</script>', "テスト")], html_mod.escape
+        )
+        assert "<script>" not in html
+        assert "&lt;script&gt;" in html
+
 
 # ── _parse_svg_points ───────────────────────────────────
 
@@ -650,6 +812,31 @@ class TestBuildIntegration:
     def test_built_sitemap_is_well_formed_xml(self, dist):
         import xml.etree.ElementTree as ET
         ET.parse(dist / "sitemap.xml")  # raises on malformed XML
+
+    def test_all_species_pages_have_related_section(self, dist):
+        missing = [
+            p.parent.name
+            for p in (dist / "species").rglob("index.html")
+            if "同じ仲間の動物" not in p.read_text(encoding="utf-8")
+        ]
+        assert not missing, f"Missing related section: {missing[:5]}"
+
+    def test_related_links_point_to_valid_ids(self, dist):
+        import re
+        with open(dist / "animals.json", encoding="utf-8") as f:
+            valid_ids = {a["id"] for a in json.load(f)}
+        bad = []
+        for page in (dist / "species").rglob("index.html"):
+            html = page.read_text(encoding="utf-8")
+            for mid in re.findall(r'class="related-item"[^>]*href="/species/([^/]+)/"', html):
+                if mid not in valid_ids:
+                    bad.append((page.parent.name, mid))
+        assert not bad, f"Related links to invalid IDs: {bad[:5]}"
+
+    def test_index_html_has_species_detail_link(self, dist):
+        html = (dist / "index.html").read_text(encoding="utf-8")
+        assert "species-detail-link" in html
+        assert "詳細ページで見る" in html
 
 
 # ── Excel data integrity (real data) ────────────────────

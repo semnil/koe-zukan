@@ -357,6 +357,15 @@ header p {
   padding: 0;
 }
 .modal-close:hover { background: var(--hover); }
+.species-detail-link {
+  display: block;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--accent);
+  text-decoration: none;
+  text-align: right;
+}
+.species-detail-link:hover { text-decoration: underline; }
 .modal-hint {
   margin-top: 1rem;
   padding-top: 0.5rem;
@@ -564,6 +573,86 @@ const CONSERVATION = {
   "LC": "低懸念", "NT": "準絶滅危惧", "VU": "危急", "EN": "絶滅危惧",
   "CR": "深刻な危機", "DD": "データ不足", "NE": "未評価", "EW": "野生絶滅", "EX": "絶滅"
 };
+const NO_VOICE_LABEL = {
+  ja: "鳴き声なし", en: "Silent", ko: "소리 없음", zh: "无叫声",
+};
+const NO_ONO_LABEL = {
+  ja: () => "データなし", en: () => "No data", ko: () => "데이터 없음", zh: () => "无数据",
+};
+const MODAL_LABELS = {
+  ja: { ono: "オノマトペ", info: "基本情報", voiceMethod: "発声方法", conservation: "保全状況", regions: "生息地域" },
+  en: { ono: "Onomatopoeia", info: "Info", voiceMethod: "Voice", conservation: "Status", regions: "Habitat" },
+  ko: { ono: "의성어", info: "기본 정보", voiceMethod: "발성", conservation: "보전 상태", regions: "서식지" },
+  zh: { ono: "拟声词", info: "基本信息", voiceMethod: "发声", conservation: "保护状态", regions: "栖息地" },
+};
+const MODAL_HINT = {
+  ja: "Esc キーまたは外側をタップで閉じる",
+  en: "Press Esc or tap outside to close",
+  ko: "Esc 또는 바깥을 탭하여 닫기",
+  zh: "按 Esc 或点击外部关闭",
+};
+const CLOSE_LABEL = {
+  ja: "閉じる (Esc キー)", en: "Close (Esc)", ko: "닫기 (Esc)", zh: "关闭 (Esc)",
+};
+const ALL_LABEL = { ja: "すべて", en: "All", ko: "모두", zh: "全部" };
+const SEARCH_LABELS = {
+  ja: {
+    label: "動物名・鳴き声・英名で検索",
+    placeholder: "動物名、鳴き声、英名で検索...  例: ワンワン / meow / カエル",
+    hint: "和名・英名・学名・オノマトペ（日本語/英語/韓国語/中国語）であいまい検索できます",
+    clear: "検索語をクリア",
+    filters: "動物分類フィルター",
+    langTabs: "表示言語",
+    noResults: "該当する動物が見つかりませんでした",
+    loading: "読み込み中...",
+    loadError: "データを読み込めませんでした。ページを再読み込みしてください。",
+  },
+  en: {
+    label: "Search by name, sound, or scientific name",
+    placeholder: "Name, sound, scientific name...  e.g. meow / bark / frog",
+    hint: "Fuzzy search by common name, scientific name, or onomatopoeia (JA / EN / KO / ZH)",
+    clear: "Clear search",
+    filters: "Filter by class",
+    langTabs: "Display language",
+    noResults: "No animals found",
+    loading: "Loading...",
+    loadError: "Failed to load data. Please reload the page.",
+  },
+  ko: {
+    label: "동물 이름, 소리, 영어 이름으로 검색",
+    placeholder: "이름, 소리, 영어 이름...  예: 야옹 / meow / 개구리",
+    hint: "이름, 학명, 의성어(일본어/영어/한국어/중국어)로 유사 검색할 수 있습니다",
+    clear: "검색어 지우기",
+    filters: "분류 필터",
+    langTabs: "표시 언어",
+    noResults: "해당하는 동물을 찾을 수 없습니다",
+    loading: "로딩 중...",
+    loadError: "데이터를 불러올 수 없습니다. 페이지를 새로 고침하세요.",
+  },
+  zh: {
+    label: "按名称、叫声或英文名搜索",
+    placeholder: "名称、叫声、英文名...  例如: 喵 / meow / 青蛙",
+    hint: "可按名称、学名、拟声词（日文/英文/韩文/中文）进行模糊搜索",
+    clear: "清除搜索",
+    filters: "按纲目筛选",
+    langTabs: "显示语言",
+    noResults: "未找到相关动物",
+    loading: "加载中...",
+    loadError: "数据加载失败，请刷新页面。",
+  },
+};
+const VOICE_METHOD_EN = {
+  "声帯": "Vocal cords", "鳴管": "Syrinx", "鳴嚢共鳴": "Vocal sac",
+  "翅の振動音": "Wing vibration", "翅の摩擦音": "Wing stridulation", "翅摩擦": "Wing stridulation",
+  "喉": "Throat", "喉・鼻": "Throat/Nose", "喉（喉袋共鳴）": "Throat (gular pouch)",
+  "気門音": "Spiracle", "浮き袋振動": "Swim bladder", "浮袋振動": "Swim bladder",
+  "甲羅振動": "Shell vibration", "殻の開閉音": "Shell clapping", "殻摩擦": "Shell stridulation",
+  "触角摩擦音": "Antenna stridulation", "鋏摩擦": "Claw stridulation",
+  "歯の摩擦音": "Dental stridulation", "歯ぎしり": "Teeth grinding", "咽頭歯": "Pharyngeal teeth",
+  "打撃音": "Percussion", "摂食音": "Feeding sound",
+  "尾の発音器": "Tail rattle", "尾部振動": "Tail vibration",
+  "キャビテーション": "Cavitation", "その他": "Other", "鳴き声なし": "Silent",
+};
 
 let animals = [];
 let fuse = null;
@@ -584,6 +673,50 @@ function applyDisplayLang(code) {
   displayLang = code;
   document.documentElement.lang = code;
   document.title = LANG_TITLES[code] || LANG_TITLES.ja;
+  updateFilterLabels();
+  updateSearchLabels();
+}
+
+function updateSearchLabels() {
+  const s = SEARCH_LABELS[displayLang] || SEARCH_LABELS.ja;
+  const input = document.getElementById("searchInput");
+  const lbl = document.querySelector('label[for="searchInput"]');
+  const clear = document.getElementById("searchClear");
+  const filters = document.getElementById("classFilters");
+  const langTabs = document.getElementById("langTabs");
+  if (input) { input.setAttribute("aria-label", s.label); input.setAttribute("placeholder", s.placeholder); }
+  if (lbl) lbl.textContent = s.label;
+  if (clear) clear.setAttribute("aria-label", s.clear);
+  if (filters) filters.setAttribute("aria-label", s.filters);
+  if (langTabs) langTabs.setAttribute("aria-label", s.langTabs);
+  const hint = document.querySelector(".search-hint");
+  if (hint) hint.textContent = s.hint;
+}
+
+function updateFilterLabels() {
+  document.querySelectorAll(".filter-btn").forEach(btn => {
+    if (!btn.dataset.cls) {
+      btn.textContent = ALL_LABEL[displayLang] || ALL_LABEL.ja;
+    } else {
+      const info = CLASS_INFO[btn.dataset.cls];
+      const label = displayLang === "ja" ? btn.dataset.cls : (info?.en || btn.dataset.cls);
+      btn.textContent = `${info?.icon || ""} ${label} (${btn.dataset.count})`;
+    }
+  });
+}
+
+function getDisplayName(a) {
+  return displayLang === "ja" ? a.nameJA : (a.nameEN || a.nameJA);
+}
+function getClassLabel(ci, a) {
+  return displayLang === "ja" ? a.class : (ci.en || a.class);
+}
+function getVoiceMethod(vm) {
+  if (!vm || vm === "鳴き声なし") return "";
+  return displayLang === "ja" ? vm : (VOICE_METHOD_EN[vm] || vm);
+}
+function getRegionName(r) {
+  return displayLang === "ja" ? r.nameJA : (r.nameEN || r.nameJA);
 }
 
 // Katakana to Hiragana conversion
@@ -594,14 +727,15 @@ function kataToHira(str) {
 // Fetch data
 async function init() {
   const container = document.getElementById("results");
-  container.innerHTML = '<div class="no-results"><p>読み込み中...</p></div>';
+  const sl = SEARCH_LABELS[displayLang] || SEARCH_LABELS.ja;
+  container.innerHTML = `<div class="no-results"><p>${sl.loading}</p></div>`;
   try {
     const res = await fetch("animals.json");
     if (!res.ok) throw new Error("HTTP " + res.status);
     animals = await res.json();
   } catch (e) {
     console.error("Failed to load data:", e);
-    container.innerHTML = '<div class="no-results"><p>データを読み込めませんでした。ページを再読み込みしてください。</p></div>';
+    container.innerHTML = `<div class="no-results"><p>${sl.loadError}</p></div>`;
     return;
   }
 
@@ -693,7 +827,7 @@ function renderFilters() {
   const container = document.getElementById("classFilters");
   const allBtn = document.createElement("button");
   allBtn.className = "filter-btn active";
-  allBtn.textContent = "すべて";
+  allBtn.textContent = ALL_LABEL[displayLang] || ALL_LABEL.ja;
   allBtn.setAttribute("aria-pressed", "true");
   allBtn.onclick = () => { activeClass = null; updateFilters(); onSearch(); };
   container.appendChild(allBtn);
@@ -706,7 +840,9 @@ function renderFilters() {
     const btn = document.createElement("button");
     btn.className = "filter-btn";
     btn.dataset.cls = cls;
-    btn.textContent = `${info.icon} ${cls} (${counts[cls]})`;
+    btn.dataset.count = counts[cls];
+    const label = displayLang === "ja" ? cls : (info.en || cls);
+    btn.textContent = `${info.icon} ${label} (${counts[cls]})`;
     btn.setAttribute("aria-pressed", "false");
     btn.onclick = () => { activeClass = cls; updateFilters(); onSearch(); };
     container.appendChild(btn);
@@ -724,7 +860,7 @@ function updateFilters() {
 function renderLangTabs() {
   const container = document.getElementById("langTabs");
   container.setAttribute("role", "group");
-  container.setAttribute("aria-label", "表示言語");
+  container.setAttribute("aria-label", (SEARCH_LABELS[displayLang] || SEARCH_LABELS.ja).langTabs);
   Object.entries(LANG_LABELS).forEach(([code, label]) => {
     const btn = document.createElement("button");
     btn.className = `lang-tab${code === displayLang ? " active" : ""}`;
@@ -798,7 +934,7 @@ function renderResults(results) {
     container.innerHTML = `
       <div class="no-results">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d6d3d1" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M8 11h6"/></svg>
-        <p>該当する動物が見つかりませんでした</p>
+        <p>${esc((SEARCH_LABELS[displayLang] || SEARCH_LABELS.ja).noResults)}</p>
       </div>`;
     return;
   }
@@ -810,32 +946,24 @@ function renderResults(results) {
 
     let onoHTML;
     if (hasVoice && ono) {
-      const subLang = displayLang === "ja" ? "en" : "ja";
-      const subOno = getOno(a, subLang) || (subLang === "ja" ? a.onomatopoeiaJA : "");
-      onoHTML = `<div class="ono-display">
-        <div class="ono-main" lang="${displayLang}">${esc(ono)}</div>
-        ${subOno ? `<div class="ono-sub" lang="${subLang}">${esc(LANG_LABELS[subLang])}: ${esc(subOno)}</div>` : ""}
-      </div>`;
+      onoHTML = `<div class="ono-display"><div class="ono-main" lang="${displayLang}">${esc(ono)}</div></div>`;
     } else if (hasVoice) {
-      onoHTML = `<div class="ono-display"><div class="ono-main no-voice">(${esc(LANG_LABELS[displayLang])}データなし)</div></div>`;
+      onoHTML = `<div class="ono-display"><div class="ono-main no-voice">(${esc((NO_ONO_LABEL[displayLang] || NO_ONO_LABEL.ja)())})</div></div>`;
     } else {
-      onoHTML = `<div class="ono-display"><div class="ono-main no-voice">鳴き声なし</div></div>`;
+      onoHTML = `<div class="ono-display"><div class="ono-main no-voice">${esc(NO_VOICE_LABEL[displayLang] || NO_VOICE_LABEL.ja)}</div></div>`;
     }
 
+    const vm = getVoiceMethod(a.voiceMethod);
     return `<button type="button" class="card" data-id="${esc(a.id)}">
       <div class="card-header">
-        <div>
-          <div class="card-name">${esc(a.nameJA)}</div>
-          <div class="card-name-en" lang="en">${esc(a.nameEN)}</div>
-        </div>
-        <span class="class-tag ${ci.css}">${ci.icon} ${esc(a.class)}</span>
+        <div class="card-name">${esc(getDisplayName(a))}</div>
+        <span class="class-tag ${ci.css}">${ci.icon} ${esc(getClassLabel(ci, a))}</span>
       </div>
-      <div class="card-sci" lang="la">${esc(a.scientificName)}</div>
       ${onoHTML}
       <div class="card-meta">
-        ${a.voiceMethod && a.voiceMethod !== "鳴き声なし" ? `<span class="meta-item">${esc(a.voiceMethod)}</span>` : ""}
+        ${vm ? `<span class="meta-item">${esc(vm)}</span>` : ""}
         ${a.conservation ? `<span class="meta-item">${esc(a.conservation)}</span>` : ""}
-        ${a.regions.length > 0 ? `<span class="meta-item">${esc(a.regions.map(r=>r.nameJA).slice(0,2).join("・"))}${a.regions.length > 2 ? " +" + (a.regions.length-2) : ""}</span>` : ""}
+        ${a.regions.length > 0 ? `<span class="meta-item">${esc(a.regions.slice(0,2).map(getRegionName).join("・"))}${a.regions.length > 2 ? " +" + (a.regions.length-2) : ""}</span>` : ""}
       </div>
     </button>`;
   }).join("");
@@ -858,64 +986,48 @@ function openModal(id, pushState = true) {
   const ci = CLASS_INFO[a.class] || { icon: "🔹", css: "class-other", en: "" };
 
   const onoEntries = a.onomatopoeia.filter(o => o.onomatopoeia);
-  const onoByLang = {};
-  onoEntries.forEach(o => {
-    if (!onoByLang[o.lang]) onoByLang[o.lang] = [];
-    onoByLang[o.lang].push(o);
-  });
+  const modalOnos = (() => {
+    const cur = onoEntries.filter(o => o.lang === displayLang);
+    return cur.length > 0 ? cur : onoEntries.filter(o => o.lang === "ja");
+  })();
 
-  const audioLabel = a.id.match(/^B/) ? "xeno-canto" : "Macaulay Library";
   document.getElementById("modal").innerHTML = `
-    <button class="modal-close" id="modalCloseBtn" type="button" aria-label="閉じる (Esc キー)">
+    <button class="modal-close" id="modalCloseBtn" type="button" aria-label="${esc(CLOSE_LABEL[displayLang] || CLOSE_LABEL.ja)}">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
-    <span class="class-tag ${ci.css}">${ci.icon} ${esc(a.class)} / ${esc(a.order)} / ${esc(a.family)}</span>
-    <h2 id="modal-title" style="margin-top:0.5rem">${esc(a.nameJA)}</h2>
-    <div class="en-name" lang="en">${esc(a.nameEN)}${a.altEN ? ` (${esc(a.altEN)})` : ""}</div>
+    <span class="class-tag ${ci.css}">${ci.icon} ${esc(getClassLabel(ci, a))}</span>
+    <h2 id="modal-title" style="margin-top:0.5rem">${esc(getDisplayName(a))}</h2>
+    <div class="en-name" lang="${displayLang === "ja" ? "en" : "ja"}">${displayLang === "ja" ? esc(a.nameEN) : esc(a.nameJA)}${displayLang === "ja" && a.altEN ? ` (${esc(a.altEN)})` : ""}</div>
     <div class="sci" lang="la">${esc(a.scientificName)}</div>
 
-    ${onoEntries.length > 0 ? `
+    ${(() => {
+      const labels = MODAL_LABELS[displayLang] || MODAL_LABELS.ja;
+      const vm = getVoiceMethod(a.voiceMethod);
+      const regText = a.regions.map(r => esc(getRegionName(r))).join("、") || esc(a.habitat);
+      return `
+    ${modalOnos.length > 0 ? `
     <div class="detail-section">
-      <h3>オノマトペ / Onomatopoeia</h3>
+      <h3>${esc(labels.ono)}</h3>
       <div class="ono-grid">
-        ${Object.entries(onoByLang).map(([lang, entries]) =>
-          entries.map(o => `
-            <div class="ono-cell">
-              <div class="ono-cell-lang">${esc(LANG_LABELS[lang] || lang)}</div>
-              <div class="ono-cell-text" lang="${esc(lang)}">${esc(o.onomatopoeia)}</div>
-              ${o.scene ? `<div class="ono-cell-scene">${esc(o.scene)}</div>` : ""}
-            </div>
-          `).join("")
-        ).join("")}
+        ${modalOnos.map(o => `
+          <div class="ono-cell">
+            <div class="ono-cell-lang">${esc(LANG_LABELS[o.lang] || o.lang)}</div>
+            <div class="ono-cell-text" lang="${esc(o.lang)}">${esc(o.onomatopoeia)}</div>
+          </div>
+        `).join("")}
       </div>
     </div>` : ""}
 
     <div class="detail-section">
-      <h3>基本情報</h3>
-      <div class="detail-row"><span class="detail-label">発声方法</span><span>${esc(a.voiceMethod || "—")}</span></div>
-      <div class="detail-row"><span class="detail-label">保全状況</span><span>${esc(a.conservation)}${CONSERVATION[a.conservation] ? ` (${CONSERVATION[a.conservation]})` : ""}</span></div>
-      <div class="detail-row"><span class="detail-label">生息地域</span><span>${a.regions.map(r => esc(r.nameJA)).join("、") || esc(a.habitat)}</span></div>
-      ${a.note ? `<div class="detail-row"><span class="detail-label">備考</span><span>${esc(a.note)}</span></div>` : ""}
-    </div>
+      <h3>${esc(labels.info)}</h3>
+      ${vm ? `<div class="detail-row"><span class="detail-label">${esc(labels.voiceMethod)}</span><span>${esc(vm)}</span></div>` : ""}
+      <div class="detail-row"><span class="detail-label">${esc(labels.conservation)}</span><span>${esc(a.conservation)}</span></div>
+      <div class="detail-row"><span class="detail-label">${esc(labels.regions)}</span><span>${regText}</span></div>
+    </div>`;
+    })()}
 
-    <div class="detail-section">
-      <h3>外部リンク</h3>
-      <div class="detail-links">
-        ${a.imageRef ? `<a href="${esc(a.imageRef)}" target="_blank" rel="noopener" aria-label="Wikimedia Commons (新しいタブで開く)"><span aria-hidden="true">📷</span> Wikimedia Commons <span class="ext-mark" aria-hidden="true">↗</span></a>` : ""}
-        ${a.audioRef ? `<a href="${esc(a.audioRef)}" target="_blank" rel="noopener" aria-label="${esc(audioLabel)} (新しいタブで開く)"><span aria-hidden="true">🔊</span> ${audioLabel} <span class="ext-mark" aria-hidden="true">↗</span></a>` : ""}
-        <a href="https://ja.wikipedia.org/wiki/${encodeURIComponent(a.nameJA)}" target="_blank" rel="noopener" aria-label="Wikipedia 日本語版 (新しいタブで開く)"><span aria-hidden="true">📖</span> Wikipedia (JA) <span class="ext-mark" aria-hidden="true">↗</span></a>
-        ${a.nameEN ? `<a href="https://en.wikipedia.org/wiki/${encodeURIComponent(a.nameEN)}" target="_blank" rel="noopener" aria-label="Wikipedia English (opens in new tab)"><span aria-hidden="true">📖</span> Wikipedia (EN) <span class="ext-mark" aria-hidden="true">↗</span></a>` : ""}
-      </div>
-    </div>
-
-    <div class="share-section">
-      <h3>共有 / Share</h3>
-      <div class="share-buttons">
-        ${shareButtons(a)}
-      </div>
-    </div>
-
-    <p class="modal-hint">Esc キーまたは外側をタップで閉じる</p>
+    <a href="/species/${esc(a.id)}/" class="species-detail-link">詳細ページで見る →</a>
+    <p class="modal-hint">${esc(MODAL_HINT[displayLang] || MODAL_HINT.ja)}</p>
   `;
   document.getElementById("modalCloseBtn").addEventListener("click", () => closeModal());
   document.getElementById("modalOverlay").classList.add("open");

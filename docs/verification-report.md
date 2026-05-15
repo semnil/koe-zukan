@@ -261,7 +261,25 @@ UX / 品質の 2 系統で 3 ラウンドの監査を実施。詳細は `docs/ux
 
 ---
 
-## 総計サマリー (V001-V024, 2026-04-17 時点)
+## 機能拡張ラウンド (2026-05-16)
+
+SEO・UX 改善を目的とした機能追加と多言語 UI 全面対応。
+
+### [V025] 関連種リンク・コンテンツ差別化・全 UI 多言語対応
+- **Severity**: Informational → **実装済み**
+- **Phase**: Code
+- **Location**: `scripts/build.py`, `templates/index.html`, `templates/species.html`
+- **Technique**: SEO 内部リンク分析、コンテンツ差別化レビュー、多言語 UI 網羅確認
+- **変更内容**:
+  1. **関連種リンク** (`_build_related_species`): family→order→class→phylum の 4 段フォールバックで最大 4 件を選出。全 305 種でリンクが生成されることを `test_all_species_pages_have_related_section` で保証
+  2. **「詳細ページで見る →」リンク**: モーダル内に `/species/{ID}/` への遷移リンクを追加。カード→モーダル→種ページの導線を確立
+  3. **コンテンツ差別化**: カードは名前+主オノマトペのみ、モーダルは1言語プレビュー+詳細リンク、種ページは4言語フル表示+外部リンク+共有+関連種
+  4. **全 UI 多言語対応**: `VOICE_METHOD_EN` (27 エントリ)、`MODAL_LABELS`、`SEARCH_LABELS`、`NO_VOICE_LABEL`、`NO_ONO_LABEL`、`MODAL_HINT`、`CLOSE_LABEL`、`ALL_LABEL` を追加。`updateFilterLabels()` / `updateSearchLabels()` で `applyDisplayLang` 時に全 UI 要素を切替
+- **テスト**: `tests/test_build.py` に 20 件追加 (計 114 件 Pass)。`TestBuildRelatedSpecies` (9)、`TestBuildRelatedHtml` (6)、`TestGenerateSpeciesPages` 拡充 (4)、`TestBuildIntegration` 拡充 (3)
+
+---
+
+## 総計サマリー (V001-V025, 2026-05-16 時点)
 
 | 重要度 | 件数 | 修正済み | 保留 (機能影響なし) |
 |---|---|---|---|
@@ -273,3 +291,4 @@ UX / 品質の 2 系統で 3 ラウンドの監査を実施。詳細は `docs/ux
 
 S1/S2 は全件修正済み。S3/S4 の保留項目はすべて意図的な Documented 判断 (機能影響ゼロ)。
 UX 監査ラウンド 3 で WCAG 2.1 AA / 2.2 AA SC は全項目 Pass 判定。
+V025: 関連種リンク・コンテンツ差別化・全 UI 多言語対応 (機能追加、テスト 114 件 Pass)。
