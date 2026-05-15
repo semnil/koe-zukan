@@ -480,6 +480,11 @@ VOICE_METHOD_EN = {
 
 LANG_LABELS = {"ja": "日本語", "en": "English", "ko": "한국어", "zh": "中文"}
 
+# Onomatopoeia language names spelled in Japanese, used for the initial
+# aria-label on .ono-play buttons (the species page is initially rendered
+# in Japanese; JS rewrites the labels per UI language afterwards).
+LANG_LABELS_JA = {"ja": "日本語", "en": "英語", "ko": "韓国語", "zh": "中国語"}
+
 # Matches CLASS_INFO in templates/index.html so cards and species pages show
 # the same class-specific tag color / icon (UX audit M5).
 CLASS_INFO = {
@@ -664,17 +669,33 @@ def generate_species_pages(animals, dist_dir):
     for a in animals:
         aid = a["id"]
 
-        # Onomatopoeia by language
+        # Onomatopoeia by language. Each cell ships a Web Speech API play
+        # button so visitors can hear how the onomatopoeia sounds in its
+        # source language. data-play-lang/data-play-text are read by the
+        # species page script (speakOnomatopoeia); aria-label is initially
+        # Japanese and rewritten per UI language by updatePlayLabels().
         ono_html_parts = []
         for o in a["onomatopoeia"]:
             if o["onomatopoeia"]:
                 lang_label = esc(LANG_LABELS.get(o["lang"], o["lang"]))
                 lang_attr = esc(o["lang"])
+                ono_text = esc(o["onomatopoeia"])
+                # Initial aria-label uses the Japanese language name
+                # (e.g. "英語") because the page is rendered in Japanese by
+                # default. updatePlayLabels() swaps these per UI language.
+                aria_lang_name = esc(LANG_LABELS_JA.get(o["lang"], o["lang"]))
+                play_btn = (
+                    f'<button type="button" class="ono-play" '
+                    f'data-play-lang="{lang_attr}" data-play-text="{ono_text}" '
+                    f'aria-label="{aria_lang_name}の発音を再生">'
+                    f'<span aria-hidden="true">\U0001f50a</span></button>'
+                )
                 ono_html_parts.append(
                     f'<div class="ono-cell">'
                     f'<div class="ono-cell-lang">{lang_label}</div>'
-                    f'<div class="ono-cell-text" lang="{lang_attr}">{esc(o["onomatopoeia"])}</div>'
+                    f'<div class="ono-cell-text" lang="{lang_attr}">{ono_text}</div>'
                     f'{"<div class=\"ono-cell-scene\">" + esc(o["scene"]) + "</div>" if o["scene"] else ""}'
+                    f'{play_btn}'
                     f'</div>'
                 )
         ono_section = ""

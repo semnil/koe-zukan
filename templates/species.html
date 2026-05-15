@@ -157,10 +157,41 @@ body {
   border-radius: 8px;
   padding: 0.5rem;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
 }
 .ono-cell-lang { font-size: 0.7rem; color: var(--text2); margin-bottom: 0.2rem; }
 .ono-cell-text { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
 .ono-cell-scene { font-size: 0.7rem; color: var(--text2); margin-top: 0.15rem; }
+.ono-play {
+  margin-top: 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0;
+  transition: background 0.15s, transform 0.1s, border-color 0.15s;
+  font-family: inherit;
+}
+.ono-play:hover { background: var(--accent-light); border-color: var(--accent); }
+.ono-play:active { transform: scale(0.94); }
+.ono-play.playing {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+}
+html.no-tts .ono-play { display: none; }
 .detail-row {
   display: flex;
   justify-content: space-between;
@@ -324,6 +355,27 @@ const SPECIES_DATA = {{SPECIES_DATA_JSON}};
 const RELATED_DATA = {{RELATED_DATA_JSON}};
 
 const LANG_LABELS = { ja: "日本語", en: "English", ko: "한국어", zh: "中文" };
+
+// BCP-47 tags handed to SpeechSynthesisUtterance. Picked to match the most
+// commonly available browser voices on Windows/macOS/Android.
+const PLAY_LANG_MAP = { ja: "ja-JP", en: "en-US", ko: "ko-KR", zh: "zh-CN" };
+
+// Onomatopoeia language names rendered in each UI language. Used to build
+// localised aria-labels like "Play Japanese pronunciation" / "日本語の発音を再生".
+const LANG_NAMES_LOCALIZED = {
+  ja: { ja: "日本語", en: "英語", ko: "韓国語", zh: "中国語" },
+  en: { ja: "Japanese", en: "English", ko: "Korean", zh: "Chinese" },
+  ko: { ja: "일본어", en: "영어", ko: "한국어", zh: "중국어" },
+  zh: { ja: "日语",   en: "英语", ko: "韩语",   zh: "中文" },
+};
+
+// "Play X pronunciation" template per UI language.
+const PLAY_LABELS = {
+  ja: (name) => `${name}の発音を再生`,
+  en: (name) => `Play ${name} pronunciation`,
+  ko: (name) => `${name} 발음 재생`,
+  zh: (name) => `播放${name}发音`,
+};
 
 const I18N = {
   ja: {
@@ -626,6 +678,11 @@ function applyLang(code) {
     }).join("");
   }
 
+  // Pronunciation play-button aria-labels follow the UI language so
+  // screen-reader users hear "Play Japanese pronunciation" / "日本語の発音を再生"
+  // depending on which display language is active.
+  updatePlayLabels(code);
+
   // Lang tabs active state
   document.querySelectorAll('.lang-tab').forEach(btn => {
     const isActive = btn.dataset.lang === code;
@@ -658,6 +715,51 @@ function renderLangTabs() {
   });
 }
 
+// Web Speech API is the cheapest way to let visitors hear how each
+// onomatopoeia is pronounced in its source language. Voice quality and
+// availability depend on the browser/OS; if the engine cannot match the
+// requested BCP-47 tag it usually falls back to a default voice, which is
+// still more useful than silence. Browsers without speechSynthesis simply
+// hide the buttons (handled by the html.no-tts class).
+const TTS_SUPPORTED = typeof window !== "undefined"
+  && "speechSynthesis" in window
+  && typeof window.SpeechSynthesisUtterance === "function";
+
+if (!TTS_SUPPORTED) {
+  document.documentElement.classList.add("no-tts");
+}
+
+function speakOnomatopoeia(btn) {
+  if (!TTS_SUPPORTED) return;
+  const text = btn.dataset.playText || "";
+  const lang = btn.dataset.playLang || "";
+  const bcp47 = PLAY_LANG_MAP[lang];
+  if (!text || !bcp47) return;
+  try {
+    window.speechSynthesis.cancel();
+    document.querySelectorAll('.ono-play.playing').forEach(b => b.classList.remove('playing'));
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = bcp47;
+    utter.rate = 0.9;
+    btn.classList.add("playing");
+    utter.onend = () => btn.classList.remove("playing");
+    utter.onerror = () => btn.classList.remove("playing");
+    window.speechSynthesis.speak(utter);
+  } catch (e) {
+    btn.classList.remove("playing");
+  }
+}
+
+function updatePlayLabels(code) {
+  const buildLabel = PLAY_LABELS[code] || PLAY_LABELS.en;
+  const names = LANG_NAMES_LOCALIZED[code] || LANG_NAMES_LOCALIZED.en;
+  document.querySelectorAll('[data-play-lang]').forEach(btn => {
+    const onoLang = btn.dataset.playLang;
+    const langName = names[onoLang] || onoLang;
+    btn.setAttribute('aria-label', buildLabel(langName));
+  });
+}
+
 function copyShareUrl(url, btn) {
   const L = I18N[currentLang] || I18N.en;
   navigator.clipboard.writeText(url).then(function() {
@@ -676,8 +778,18 @@ function copyShareUrl(url, btn) {
 }
 
 document.addEventListener("click", function(e) {
+  var playBtn = e.target.closest(".ono-play");
+  if (playBtn) { speakOnomatopoeia(playBtn); return; }
   var btn = e.target.closest("[data-copy-url]");
   if (btn) copyShareUrl(btn.dataset.copyUrl, btn);
+});
+
+// Cancel any in-flight utterance when the user navigates away so the
+// pronunciation doesn't keep playing on the next page.
+window.addEventListener("beforeunload", function() {
+  if (TTS_SUPPORTED) {
+    try { window.speechSynthesis.cancel(); } catch (e) { /* ignore */ }
+  }
 });
 
 renderLangTabs();
