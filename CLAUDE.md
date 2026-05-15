@@ -169,6 +169,7 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
 - URL パラメータ `?id=` でカード直接リンク、`?q=` で初期検索クエリ (`WebSite` JSON-LD の SearchAction `urlTemplate` 契約)
 - Google Search Console 連携 (サイトマップ + 所有権確認メタタグ)
 - 関連種リンク: 種ページに「同じ仲間の動物」セクション (family→order→class→phylum の 4 段フォールバック、最大 4 件) — SEO 内部リンク強化
+- オノマトペ発音再生 (種ページ): 各オノマトペセル (`.ono-cell`) に `🔊` ボタン (`.ono-play`, 44×44 タップターゲット) を配置。Web Speech API (`speechSynthesis` + `SpeechSynthesisUtterance`) でブラウザ標準 TTS を呼び出し、`data-play-lang` (ja/en/ko/zh) を `PLAY_LANG_MAP` で BCP-47 タグ (`ja-JP`/`en-US`/`ko-KR`/`zh-CN`) にマップして再生。`utter.rate = 0.9` で少し遅め。`speechSynthesis` 非対応環境では JS 起動時に `html.no-tts` を付与し CSS でボタンを非表示。連続クリック・新規発話の前に `speechSynthesis.cancel()` を呼んで多重再生を防ぎ、`beforeunload` でも `cancel()` してページ遷移時の続行再生を防ぐ。再生中は対象ボタンに `.playing` クラスを付与 (背景アクセント色)、`onend`/`onerror` で解除。aria-label は表示言語に応じて `updatePlayLabels(code)` が再生成 (例: `日本語の発音を再生` / `Play Japanese pronunciation` / `일본어 발음 재생` / `播放日语发音`、`PLAY_LABELS` × `LANG_NAMES_LOCALIZED` の組み合わせで 4×4 = 16 通り)。初期 HTML の aria-label は日本語名 (`LANG_LABELS_JA`: 英語/韓国語/中国語) で出力し、no-JS でも自然な日本語読み上げになるようにしている。発音精度は OS/ブラウザ音声エンジン依存で、辞書にないオノマトペ (「ニャー」「woof」等) は綴り通り読まれることがある (期待値として割り切る)
 
 ### コンテンツ差別化設計 (カード / モーダル / 種ページ)
 
@@ -176,7 +177,7 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
 |---|---|---|---|
 | 名前 | 和名 or 表示言語 | 表示言語 | 和名 + 英名 + 学名 |
 | 綱/目/科 タグ | 綱のみ (アイコン付き) | 綱のみ | 綱/目/科 全階層 |
-| オノマトペ | 表示言語 main のみ | 表示言語 (場面なし) | 4 言語 + 場面 |
+| オノマトペ | 表示言語 main のみ | 表示言語 (場面なし) | 4 言語 + 場面 + 発音再生ボタン |
 | 外部リンク | なし | なし | あり (Wikipedia / xeno-canto / ML) |
 | 共有ボタン | なし | なし | あり (X/Facebook/LINE/URLコピー) |
 | 保全状況 | — | コードのみ | コード + 日本語ラベル |
@@ -219,7 +220,13 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
   - `data-i18n="<key>"` — テキスト書き換え対象 (`L[key]` で textContent 置換)
   - `data-link-kind="commons|xc|ml|wiki-ja|wiki-en"` — 外部リンクの aria-label 切替対象
   - `data-share-kind="x|fb|line|copy"` — 共有ボタンの aria-label 切替対象 (`copy` は内部の `.copy-label` span を書き換え)
-- ヘルパー: `detectLang()` (`?lang=` → `navigator.language` → en フォールバック)、`withLang(path, code)` (リンクへの lang 付与、ja のときは canonical 維持で無付与)、`renderLangTabs()` (top-bar 内の言語タブ生成)
+  - `data-play-lang="ja|en|ko|zh"` / `data-play-text="<onomatopoeia>"` — 発音再生ボタン (`.ono-play`) の TTS 入力ソース。`speakOnomatopoeia(btn)` が読み取って `SpeechSynthesisUtterance` に流す
+- ヘルパー: `detectLang()` (`?lang=` → `navigator.language` → en フォールバック)、`withLang(path, code)` (リンクへの lang 付与、ja のときは canonical 維持で無付与)、`renderLangTabs()` (top-bar 内の言語タブ生成)、`speakOnomatopoeia(btn)` (Web Speech API でオノマトペを再生)、`updatePlayLabels(code)` (発音ボタンの aria-label を表示言語に追従)
+- 発音再生定数:
+  - `TTS_SUPPORTED` — `speechSynthesis` + `SpeechSynthesisUtterance` の存在チェック (`false` のとき `html.no-tts` を付与しボタン非表示)
+  - `PLAY_LANG_MAP` — `{ ja: "ja-JP", en: "en-US", ko: "ko-KR", zh: "zh-CN" }` (BCP-47)
+  - `LANG_NAMES_LOCALIZED[uiCode][onoCode]` — UI 言語ごとのオノマトペ言語名 (4×4 = 16 通り)
+  - `PLAY_LABELS[uiCode](langName)` — aria-label ビルダー (4 言語分のテンプレ関数)
 
 ### SEO 設定
 

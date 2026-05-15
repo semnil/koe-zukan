@@ -325,6 +325,21 @@ V025: 関連種リンク・コンテンツ差別化・全 UI 多言語対応 (�
   - SearchAction の `urlTemplate` は `.../?q={search_term_string}`。index.html の JS が `?q=` を受けて検索ボックスに投入 + `onSearch()` を実行 (Google Sitelinks Search Box の契約遵守)
 - **テスト**: `TestIndexSeoMetadata` 3 件 (canonical 存在 / WebSite JSON-LD parse / SearchAction 仕様適合)
 
+### [V028] 種ページのオノマトペ発音再生 (Web Speech API)
+- **Severity**: Informational → **実装済み**
+- **Phase**: Code
+- **Location**: `templates/species.html`, `scripts/build.py` (`generate_species_pages`, `LANG_LABELS_JA`)
+- **Technique**: 機能設計レビュー、TTS 非対応環境の縮退設計、aria-label の言語追従契約
+- **変更内容**:
+  1. **発音ボタンの埋め込み**: build.py が各オノマトペセル (`.ono-cell`) に `<button class="ono-play" data-play-lang data-play-text aria-label>` を出力。`data-play-text` は HTML エスケープ済み (XSS 防御)
+  2. **TTS 呼び出し**: `speakOnomatopoeia(btn)` が `data-play-lang` (ja/en/ko/zh) を `PLAY_LANG_MAP` で BCP-47 (`ja-JP`/`en-US`/`ko-KR`/`zh-CN`) に変換し `SpeechSynthesisUtterance` を生成・再生 (`rate = 0.9`)。連続再生・新規発話の前に `speechSynthesis.cancel()` で前の発話を停止
+  3. **非対応環境の縮退**: `TTS_SUPPORTED` が false のとき `html.no-tts` クラスを付与し、CSS でボタンを `display: none` (Lighthouse 等のスコアに影響を与えない)
+  4. **aria-label の言語追従**: 初期 HTML は日本語名 (`LANG_LABELS_JA`: 英語/韓国語/中国語) で出力し no-JS 時も自然な読み上げ。JS 動作後は `updatePlayLabels(code)` が `PLAY_LABELS` × `LANG_NAMES_LOCALIZED` (4×4 = 16 通り) で UI 言語に追従させる
+  5. **再生状態の視覚化**: 再生中ボタンに `.playing` クラスを付与 (背景アクセント色)、`onend`/`onerror` で解除。多重再生防止のため発話開始前に他の `.playing` を全解除
+  6. **ページ離脱時の停止**: `beforeunload` で `speechSynthesis.cancel()` を呼び、種ページ間遷移で前の発話が続行しないようにする
+- **トレードオフ**: 発音精度は OS/ブラウザの音声エンジン依存で、辞書にないオノマトペ (「ニャー」「woof」等) は綴り通り読まれることがある。外部依存ゼロ志向のため許容
+- **テスト**: `tests/test_build.py` に `TestOnomatopoeiaPlayButtons` を追加 (1セル1ボタン契約、`data-play-*` 値、初期 aria-label 4 言語、HTML エスケープ、ヘルパー定数、BCP-47 マッピング、空オノマトペでボタン非生成)
+
 ### サマリー追補
 
 V025 以降の累積:
@@ -332,6 +347,6 @@ V025 以降の累積:
 | 重要度 | 件数 | 修正済み |
 |---|---|---|
 | S3 (MEDIUM) | +1 (V027) | 1 |
-| Informational | +2 (V025, V026) | 実装完了 |
+| Informational | +3 (V025, V026, V028) | 実装完了 |
 
-テスト件数: build.py 130 件 / frontend 58 件 (= 188 件全 Pass)。
+ビルド冪等性・全 JSON-LD parse・全外部リンク `rel=noopener` などの統合テストは引き続き全 Pass。
