@@ -169,13 +169,16 @@ describe("esc", () => {
 });
 
 // ── Browser language detection ─────────────────────────
-// Extracted from templates/index.html
+// Extracted from templates/index.html and templates/species.html — both
+// pages share the same priority order: explicit ?lang= → navigator.language
+// → English fallback. English (not Japanese) is the fallback so a French or
+// German visitor sees readable Latin script instead of unreadable Kanji.
 function detectLang(navigatorLang) {
-  const lang = (navigatorLang || "ja").toLowerCase();
+  const lang = (navigatorLang || "").toLowerCase();
+  if (lang.startsWith("ja")) return "ja";
   if (lang.startsWith("ko")) return "ko";
   if (lang.startsWith("zh")) return "zh";
-  if (lang.startsWith("en")) return "en";
-  return "ja";
+  return "en";
 }
 
 describe("detectLang", () => {
@@ -203,23 +206,81 @@ describe("detectLang", () => {
     assert.equal(detectLang("en-GB"), "en");
   });
 
-  it("defaults to Japanese for unsupported languages", () => {
-    assert.equal(detectLang("fr"), "ja");
-    assert.equal(detectLang("de-DE"), "ja");
-    assert.equal(detectLang("es"), "ja");
-    assert.equal(detectLang("pt-BR"), "ja");
+  it("falls back to English for unsupported languages", () => {
+    assert.equal(detectLang("fr"), "en");
+    assert.equal(detectLang("de-DE"), "en");
+    assert.equal(detectLang("es"), "en");
+    assert.equal(detectLang("pt-BR"), "en");
   });
 
-  it("defaults to Japanese for null/undefined", () => {
-    assert.equal(detectLang(null), "ja");
-    assert.equal(detectLang(undefined), "ja");
-    assert.equal(detectLang(""), "ja");
+  it("falls back to English for null/undefined/empty", () => {
+    assert.equal(detectLang(null), "en");
+    assert.equal(detectLang(undefined), "en");
+    assert.equal(detectLang(""), "en");
   });
 
   it("is case insensitive", () => {
     assert.equal(detectLang("KO-KR"), "ko");
     assert.equal(detectLang("ZH-CN"), "zh");
     assert.equal(detectLang("EN-US"), "en");
+    assert.equal(detectLang("JA-JP"), "ja");
+  });
+});
+
+// ── withLang helper (species page) ─────────────────────
+// Mirrors templates/species.html withLang(). Ensures the lang query parameter
+// is appended/omitted so detail-page links carry over the user's selected
+// language without rewriting the canonical Japanese URL.
+
+function withLang(path, code) {
+  if (!code || code === "ja") return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}lang=${encodeURIComponent(code)}`;
+}
+
+describe("withLang", () => {
+  it("returns path untouched for Japanese (canonical form)", () => {
+    assert.equal(withLang("/", "ja"), "/");
+    assert.equal(withLang("/?id=B001", "ja"), "/?id=B001");
+    assert.equal(withLang("/species/B001/", "ja"), "/species/B001/");
+  });
+
+  it("appends ?lang=<code> when path has no query", () => {
+    assert.equal(withLang("/", "en"), "/?lang=en");
+    assert.equal(withLang("/species/B001/", "ko"), "/species/B001/?lang=ko");
+    assert.equal(withLang("/species/B001/", "zh"), "/species/B001/?lang=zh");
+  });
+
+  it("appends &lang=<code> when path already has a query", () => {
+    assert.equal(withLang("/?id=B001", "en"), "/?id=B001&lang=en");
+    assert.equal(withLang("/?id=B001&foo=bar", "ko"), "/?id=B001&foo=bar&lang=ko");
+  });
+
+  it("falls back to canonical form when code is missing", () => {
+    assert.equal(withLang("/species/B001/", ""), "/species/B001/");
+    assert.equal(withLang("/species/B001/", null), "/species/B001/");
+    assert.equal(withLang("/species/B001/", undefined), "/species/B001/");
+  });
+});
+
+// ── Detail-page link construction (index → species) ────
+// The detail link inside the modal should carry the chosen display language
+// across to the species page so visitors keep their context.
+
+describe("detail link href construction", () => {
+  function detailHref(id, code) {
+    const suffix = code === "ja" ? "" : `?lang=${encodeURIComponent(code)}`;
+    return `/species/${id}/${suffix}`;
+  }
+
+  it("omits ?lang= for Japanese", () => {
+    assert.equal(detailHref("B001", "ja"), "/species/B001/");
+  });
+
+  it("appends ?lang= for non-Japanese display languages", () => {
+    assert.equal(detailHref("B001", "en"), "/species/B001/?lang=en");
+    assert.equal(detailHref("B001", "ko"), "/species/B001/?lang=ko");
+    assert.equal(detailHref("B001", "zh"), "/species/B001/?lang=zh");
   });
 });
 

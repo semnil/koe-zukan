@@ -104,6 +104,53 @@ class TestBuildStats:
 
 # ── generate_html (template placeholder replacement) ────
 
+class TestIndexSeoMetadata:
+    """The built top page must carry canonical + WebSite JSON-LD so duplicate
+    URL variants (?lang=, ?id=, ?q=) collapse to one canonical entry and the
+    site qualifies for Google's Sitelinks Search Box."""
+
+    @pytest.fixture(scope="class")
+    def html(self):
+        import subprocess
+        root = Path(__file__).resolve().parent.parent
+        if not (root / "dist" / "index.html").exists():
+            subprocess.run(
+                ["python3", "scripts/build.py"],
+                cwd=root, capture_output=True, check=True,
+            )
+        return (root / "dist" / "index.html").read_text(encoding="utf-8")
+
+    def test_canonical_present(self, html):
+        assert f'<link rel="canonical" href="{build.SITE_URL}/">' in html
+
+    def test_website_json_ld_block_parses(self, html):
+        import re
+        # First JSON-LD block on the top page must be the WebSite descriptor.
+        m = re.search(
+            r'<script type="application/ld\+json">\s*(\{.*?\})\s*</script>',
+            html, re.DOTALL,
+        )
+        assert m, "no JSON-LD on index"
+        data = json.loads(m.group(1))
+        assert data["@type"] == "WebSite"
+        assert data["url"] == f"{build.SITE_URL}/"
+        assert data["inLanguage"] == ["ja", "en", "ko", "zh"]
+
+    def test_website_json_ld_search_action(self, html):
+        import re
+        m = re.search(
+            r'<script type="application/ld\+json">\s*(\{.*?\})\s*</script>',
+            html, re.DOTALL,
+        )
+        data = json.loads(m.group(1))
+        action = data.get("potentialAction") or {}
+        assert action.get("@type") == "SearchAction"
+        # urlTemplate is the entry point Google uses to invoke the search box.
+        target = action.get("target") or {}
+        assert target.get("urlTemplate") == f"{build.SITE_URL}/?q={{search_term_string}}"
+        assert action.get("query-input") == "required name=search_term_string"
+
+
 class TestGenerateHtml:
     def test_placeholder_replacement(self, tmp_path):
         template = tmp_path / "template.html"
@@ -294,14 +341,16 @@ class TestGenerateSpeciesPages:
         animal["note"] = ""
         build.generate_species_pages([animal], tmp_path)
         page = (tmp_path / "species" / "B001" / "index.html").read_text(encoding="utf-8")
-        assert "備考" not in page
+        # 備考行 (detail-row + label) は描画されない。日本語ラベル文字列は i18n
+        # 辞書にも含まれるため "備考" 単体での検査ではなく構造マーカで判定する。
+        assert 'data-i18n="note"' not in page
 
     def test_species_page_with_note(self, tmp_path):
         animal = self._make_animal()
         animal["note"] = "テスト備考"
         build.generate_species_pages([animal], tmp_path)
         page = (tmp_path / "species" / "B001" / "index.html").read_text(encoding="utf-8")
-        assert "備考" in page
+        assert 'data-i18n="note"' in page
         assert "テスト備考" in page
 
     def test_species_page_no_voice_method(self, tmp_path):
@@ -837,6 +886,171 @@ class TestBuildIntegration:
         html = (dist / "index.html").read_text(encoding="utf-8")
         assert "species-detail-link" in html
         assert "詳細ページで見る" in html
+
+
+# ── Species page i18n payload ───────────────────────────
+
+
+class TestSpeciesPageI18nPayload:
+    """The species page embeds a SPECIES_DATA JSON blob and language-tagged DOM
+    markers so the client script can swap labels per display language. These
+    tests document the contract between build.py and templates/species.html.
+    """
+
+    def _make_animal(self, aid="B001"):
+        return {
+            "id": aid,
+            "nameJA": "スズメ",
+            "nameEN": "Eurasian Tree Sparrow",
+            "scientificName": "Passer montanus",
+            "altJA": "すずめ",
+            "altEN": "",
+            "class": "鳥綱",
+            "classEN": "Birds",
+            "order": "スズメ目",
+            "orderEN": "Passeriformes",
+            "family": "スズメ科",
+            "familyEN": "Passeridae",
+            "voiceMethod": "鳴管",
+            "conservation": "LC",
+            "habitat": "ユーラシア",
+            "note": "",
+            "imageRef": "https://commons.wikimedia.org/wiki/Category:Passer_montanus",
+            "audioRef": "https://xeno-canto.org/species/Passer-montanus",
+            "onomatopoeiaJA": "チュンチュン",
+            "hasVoice": "あり",
+            "onomatopoeia": [
+                {"lang": "ja", "onomatopoeia": "チュンチュン", "scene": "さえずり", "note": ""},
+                {"lang": "en", "onomatopoeia": "Chirp chirp", "scene": "", "note": ""},
+                {"lang": "ko", "onomatopoeia": "짹짹", "scene": "", "note": ""},
+                {"lang": "zh", "onomatopoeia": "啾啾", "scene": "", "note": ""},
+            ],
+            "regions": [{"id": "R01", "nameJA": "日本", "nameEN": "Japan"}],
+        }
+
+    def _read_page(self, tmp_path, aid="B001"):
+        animal = self._make_animal(aid)
+        build.generate_species_pages([animal], tmp_path)
+        return (tmp_path / "species" / aid / "index.html").read_text(encoding="utf-8")
+
+    def test_species_data_json_embedded(self, tmp_path):
+        page = self._read_page(tmp_path)
+        assert "const SPECIES_DATA = {" in page
+        assert "const RELATED_DATA = " in page
+
+    def test_species_data_carries_multilingual_names(self, tmp_path):
+        page = self._read_page(tmp_path)
+        # name.ja / name.en are required so the client script can swap titles
+        # without round-tripping through animals.json.
+        assert '"name":{"ja":"スズメ"' in page
+        assert '"en":"Eurasian Tree Sparrow"' in page
+
+    def test_species_data_carries_class_translations(self, tmp_path):
+        page = self._read_page(tmp_path)
+        assert '"class":{"ja":"鳥綱"' in page
+        assert '"en":"Birds"' in page
+
+    def test_species_data_carries_voice_method_translation(self, tmp_path):
+        page = self._read_page(tmp_path)
+        assert '"voiceMethod":{"ja":"鳴管","en":"Syrinx"}' in page
+
+    def test_species_data_carries_region_translations(self, tmp_path):
+        page = self._read_page(tmp_path)
+        assert '"regions":[{"ja":"日本","en":"Japan"}]' in page
+
+    def test_i18n_markers_present(self, tmp_path):
+        page = self._read_page(tmp_path)
+        # Every label that needs language swapping carries data-i18n so the
+        # script can locate it without depending on text content.
+        for marker in (
+            'data-i18n="skipLink"',
+            'data-i18n="topBar"',
+            'data-i18n="infoSection"',
+            'data-i18n="voiceMethod"',
+            'data-i18n="conservation"',
+            'data-i18n="regions"',
+            'data-i18n="linksSection"',
+            'data-i18n="shareSection"',
+            'data-i18n="backLink"',
+        ):
+            assert marker in page, f"missing i18n marker: {marker}"
+
+    def test_share_buttons_have_kind_attribute(self, tmp_path):
+        page = self._read_page(tmp_path)
+        for kind in ("x", "fb", "line", "copy"):
+            assert f'data-share-kind="{kind}"' in page, f"share kind {kind} missing"
+        # The copy button wraps its label so the script can rewrite text only.
+        assert '<span class="copy-label">URLをコピー</span>' in page
+
+    def test_external_links_have_kind_attribute(self, tmp_path):
+        page = self._read_page(tmp_path)
+        for kind in ("commons", "xc", "wiki-ja", "wiki-en"):
+            assert f'data-link-kind="{kind}"' in page, f"link kind {kind} missing"
+
+    def test_hreflang_points_to_species_page_per_locale(self, tmp_path):
+        page = self._read_page(tmp_path)
+        # Detail-page hreflang must point back to the species page itself per
+        # locale (was previously the index modal deep link).
+        for code in ("ja", "en", "ko", "zh"):
+            assert (
+                f'hreflang="{code}" href="{build.SITE_URL}/species/B001/?lang={code}"'
+                in page
+            ), f"missing hreflang for {code}"
+        assert (
+            f'hreflang="x-default" href="{build.SITE_URL}/species/B001/"' in page
+        )
+
+    def test_inline_script_protected_from_closing_script_tag(self, tmp_path):
+        """SPECIES_DATA payload with `</script>` must not split the block.
+
+        The embedded JSON is HTML-escaped (< > & → \\uXXXX) so a hostile name
+        cannot prematurely close the inline <script> and break the page.
+        """
+        animal = self._make_animal("X001")
+        animal["nameEN"] = 'Evil</script><script>alert(1)</script>'
+        build.generate_species_pages([animal], tmp_path)
+        page = (tmp_path / "species" / "X001" / "index.html").read_text(
+            encoding="utf-8"
+        )
+        # The SPECIES_DATA assignment lives in the inline data-script block.
+        # The hostile `</script>` from the input must NOT appear raw between
+        # `const SPECIES_DATA` and the next `</script>` — otherwise the block
+        # would be split and arbitrary script would execute.
+        start = page.index("const SPECIES_DATA")
+        end = page.index("</script>", start)
+        body = page[start:end]
+        assert "<script>alert" not in body
+        # Escaped form must be present so the data round-trips faithfully.
+        assert "\\u003cscript\\u003e" in body
+
+
+# ── _json_for_inline_script (XSS-safe JSON emission) ────
+
+
+class TestJsonForInlineScript:
+    """Inline JSON emitted via _json_for_inline_script must survive being
+    embedded inside a <script> block even when fields contain HTML markup.
+    """
+
+    def test_escapes_html_sensitive_characters(self):
+        out = build._json_for_inline_script({"v": "</script><b>"})
+        assert "</script>" not in out
+        assert "\\u003c/script\\u003e" in out
+        assert "\\u003cb\\u003e" in out
+
+    def test_round_trips_unicode_payload(self):
+        """Non-ASCII content stays raw (ensure_ascii=False) so JS receives the
+        same string the build saw — avoids \\uXXXX bloat for CJK text."""
+        out = build._json_for_inline_script({"name": "スズメ"})
+        assert "スズメ" in out
+
+    def test_produces_valid_json(self):
+        import json as _json
+        out = build._json_for_inline_script({"a": [1, 2, 3], "b": "x"})
+        # After undoing the HTML escapes, the result must parse as JSON.
+        unescaped = out.replace("\\u003c", "<").replace("\\u003e", ">").replace("\\u0026", "&")
+        parsed = _json.loads(unescaped)
+        assert parsed == {"a": [1, 2, 3], "b": "x"}
 
 
 # ── Excel data integrity (real data) ────────────────────
