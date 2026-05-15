@@ -462,6 +462,22 @@ CONSERVATION_JA = {
     "CR": "深刻な危機", "DD": "データ不足", "NE": "未評価", "EW": "野生絶滅", "EX": "絶滅",
 }
 
+# Voice-method translations mirror VOICE_METHOD_EN in templates/index.html so
+# species pages can switch the displayed voice-method text without round-tripping
+# through the Japanese label.
+VOICE_METHOD_EN = {
+    "声帯": "Vocal cords", "鳴管": "Syrinx", "鳴嚢共鳴": "Vocal sac",
+    "翅の振動音": "Wing vibration", "翅の摩擦音": "Wing stridulation", "翅摩擦": "Wing stridulation",
+    "喉": "Throat", "喉・鼻": "Throat/Nose", "喉（喉袋共鳴）": "Throat (gular pouch)",
+    "気門音": "Spiracle", "浮き袋振動": "Swim bladder", "浮袋振動": "Swim bladder",
+    "甲羅振動": "Shell vibration", "殻の開閉音": "Shell clapping", "殻摩擦": "Shell stridulation",
+    "触角摩擦音": "Antenna stridulation", "鋏摩擦": "Claw stridulation",
+    "歯の摩擦音": "Dental stridulation", "歯ぎしり": "Teeth grinding", "咽頭歯": "Pharyngeal teeth",
+    "打撃音": "Percussion", "摂食音": "Feeding sound",
+    "尾の発音器": "Tail rattle", "尾部振動": "Tail vibration",
+    "キャビテーション": "Cavitation", "その他": "Other", "鳴き声なし": "Silent",
+}
+
 LANG_LABELS = {"ja": "日本語", "en": "English", "ko": "한국어", "zh": "中文"}
 
 # Matches CLASS_INFO in templates/index.html so cards and species pages show
@@ -476,6 +492,99 @@ CLASS_INFO = {
     "甲殻綱":   {"en": "Crustaceans", "icon": "🦀", "css": "class-other"},
     "二枚貝綱": {"en": "Bivalves",    "icon": "🐚", "css": "class-other"},
 }
+
+
+def _json_for_inline_script(obj):
+    """Serialize a Python value to JSON safe to embed inside an inline <script>.
+
+    `json.dumps()` escapes " and \\ but leaves <, >, & alone; in a <script>
+    context that lets `</script>` in the payload terminate the block early.
+    Encode the HTML-sensitive characters as \\uXXXX so the JSON stays valid
+    and the script body cannot be split (OWASP recommendation).
+    """
+    return (
+        json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
+        .replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+    )
+
+
+def _build_species_payload(a, class_info):
+    """Build the i18n-ready species payload that is embedded in species pages."""
+    ono = []
+    for o in a.get("onomatopoeia", []):
+        if o.get("onomatopoeia"):
+            ono.append({
+                "lang": o.get("lang", ""),
+                "ono": o.get("onomatopoeia", ""),
+                "scene": o.get("scene", ""),
+            })
+
+    voice_method_ja = a.get("voiceMethod", "") or ""
+    voice_method_en = VOICE_METHOD_EN.get(voice_method_ja, voice_method_ja)
+
+    return {
+        "id": a["id"],
+        "name": {
+            "ja": a.get("nameJA", ""),
+            "en": a.get("nameEN", "") or a.get("nameJA", ""),
+        },
+        "alt": {
+            "ja": a.get("altJA", ""),
+            "en": a.get("altEN", ""),
+        },
+        "scientificName": a.get("scientificName", ""),
+        "class": {
+            "ja": a.get("class", ""),
+            "en": a.get("classEN", "") or a.get("class", ""),
+        },
+        "order": {
+            "ja": a.get("order", ""),
+            "en": a.get("orderEN", "") or a.get("order", ""),
+        },
+        "family": {
+            "ja": a.get("family", ""),
+            "en": a.get("familyEN", "") or a.get("family", ""),
+        },
+        "classIcon": class_info.get("icon", ""),
+        "voiceMethod": {
+            "ja": voice_method_ja,
+            "en": voice_method_en,
+        },
+        "conservation": a.get("conservation", ""),
+        "regions": [
+            {"ja": r.get("nameJA", ""), "en": r.get("nameEN", "") or r.get("nameJA", "")}
+            for r in a.get("regions", [])
+        ],
+        "habitat": a.get("habitat", ""),
+        "note": a.get("note", ""),
+        "hasVoice": a.get("hasVoice", "") == "あり",
+        "onomatopoeiaJA": a.get("onomatopoeiaJA", ""),
+        "onomatopoeia": ono,
+    }
+
+
+def _build_related_payload(related):
+    """Build i18n-ready related-species list (id, name, onomatopoeia per lang)."""
+    out = []
+    for r in related:
+        ono_by_lang = {"ja": "", "en": "", "ko": "", "zh": ""}
+        for o in r.get("onomatopoeia", []):
+            lang = o.get("lang", "")
+            if lang in ono_by_lang and o.get("onomatopoeia") and not ono_by_lang[lang]:
+                ono_by_lang[lang] = o["onomatopoeia"]
+        if not ono_by_lang["ja"] and r.get("onomatopoeiaJA"):
+            ono_by_lang["ja"] = r["onomatopoeiaJA"]
+        out.append({
+            "id": r["id"],
+            "name": {
+                "ja": r.get("nameJA", ""),
+                "en": r.get("nameEN", "") or r.get("nameJA", ""),
+            },
+            "ono": ono_by_lang,
+        })
+    return out
 
 
 def _build_related_species(current, animals, count=4):
@@ -517,7 +626,12 @@ def _build_related_species(current, animals, count=4):
 
 
 def _build_related_html(related, esc):
-    """Build 同じ仲間の動物 section HTML from a list of animal dicts."""
+    """Build 同じ仲間の動物 section HTML from a list of animal dicts.
+
+    The initial HTML stays Japanese for SEO/no-JS users; the species page's
+    client script rewrites .related-item content based on the chosen display
+    language using RELATED_DATA.
+    """
     if not related:
         return ""
     items = []
@@ -530,7 +644,7 @@ def _build_related_html(related, esc):
         )
     return (
         '<div class="detail-section">'
-        '<h3>同じ仲間の動物</h3>'
+        '<h3 data-i18n="related">同じ仲間の動物</h3>'
         f'<div class="related-grid">{"".join(items)}</div>'
         '</div>'
     )
@@ -566,7 +680,8 @@ def generate_species_pages(animals, dist_dir):
         ono_section = ""
         if ono_html_parts:
             ono_section = (
-                '<div class="detail-section"><h3>オノマトペ / Onomatopoeia</h3>'
+                '<div class="detail-section">'
+                '<h3 data-i18n="onoSection">オノマトペ / Onomatopoeia</h3>'
                 f'<div class="ono-grid">{"".join(ono_html_parts)}</div></div>'
             )
 
@@ -580,25 +695,31 @@ def generate_species_pages(animals, dist_dir):
 
         # External links. aria-label announces "new tab" for screen readers;
         # emoji is decorative (aria-hidden) per WAI guidance. `↗` marks the
-        # visual affordance for sighted users (UX audit M4).
+        # visual affordance for sighted users (UX audit M4). The data-link-kind
+        # attribute lets the client script rewrite the aria-label per language
+        # without re-rendering the anchor element.
         ext = '<span class="ext-mark" aria-hidden="true">↗</span>'
         links = []
         if a.get("imageRef"):
             links.append(
                 f'<a href="{esc(a["imageRef"])}" target="_blank" rel="noopener" '
+                f'data-link-kind="commons" '
                 f'aria-label="Wikimedia Commons (新しいタブで開く)">'
                 f'<span aria-hidden="true">📷</span> Wikimedia Commons {ext}</a>'
             )
         if a.get("audioRef"):
             audio_label = "xeno-canto" if aid.startswith("B") else "Macaulay Library"
+            audio_kind = "xc" if aid.startswith("B") else "ml"
             links.append(
                 f'<a href="{esc(a["audioRef"])}" target="_blank" rel="noopener" '
+                f'data-link-kind="{audio_kind}" '
                 f'aria-label="{audio_label} (新しいタブで開く)">'
                 f'<span aria-hidden="true">🔊</span> {audio_label} {ext}</a>'
             )
         links.append(
             f'<a href="https://ja.wikipedia.org/wiki/{quote(a["nameJA"], safe="")}" '
             f'target="_blank" rel="noopener" '
+            f'data-link-kind="wiki-ja" '
             f'aria-label="Wikipedia 日本語版 (新しいタブで開く)">'
             f'<span aria-hidden="true">📖</span> Wikipedia (JA) {ext}</a>'
         )
@@ -606,6 +727,7 @@ def generate_species_pages(animals, dist_dir):
             links.append(
                 f'<a href="https://en.wikipedia.org/wiki/{quote(a["nameEN"], safe="")}" '
                 f'target="_blank" rel="noopener" '
+                f'data-link-kind="wiki-en" '
                 f'aria-label="Wikipedia English (opens in new tab)">'
                 f'<span aria-hidden="true">📖</span> Wikipedia (EN) {ext}</a>'
             )
@@ -620,7 +742,13 @@ def generate_species_pages(animals, dist_dir):
 
         alt_en = a.get("altEN", "")
         note = a.get("note", "")
-        note_html = f'<div class="detail-row"><span class="detail-label">備考</span><span>{esc(note)}</span></div>' if note else ""
+        # The note label is i18n-rewritten by the species page script. The
+        # value itself stays Japanese (only ja data exists for notes).
+        note_html = (
+            f'<div class="detail-row"><span class="detail-label" data-i18n="note">備考</span>'
+            f'<span>{esc(note)}</span></div>'
+            if note else ""
+        )
         # JSON-safe values for JSON-LD. json.dumps escapes " and \ but NOT < > &,
         # so values containing "</script>" would break out of the <script> block.
         # Replace HTML-sensitive chars with \uXXXX escapes (OWASP-recommended).
@@ -629,6 +757,8 @@ def generate_species_pages(animals, dist_dir):
         json_desc = _json_for_script(desc)
         class_info = CLASS_INFO.get(a.get("class", ""), {"icon": "🔹", "css": "class-other"})
         related = _build_related_species(a, animals)
+        species_payload = _build_species_payload(a, class_info)
+        related_payload = _build_related_payload(related)
         page = _apply_placeholders(template, {
             "SITE_URL": SITE_URL,
             "ID": esc(aid),
@@ -651,6 +781,8 @@ def generate_species_pages(animals, dist_dir):
             "JSON_HEADLINE": json_headline,
             "JSON_DESCRIPTION": json_desc,
             "RELATED_SPECIES": _build_related_html(related, esc),
+            "SPECIES_DATA_JSON": _json_for_inline_script(species_payload),
+            "RELATED_DATA_JSON": _json_for_inline_script(related_payload),
         }, skip_warn={"SHARE_BUTTONS"})
 
         # Share buttons
@@ -659,10 +791,10 @@ def generate_species_pages(animals, dist_dir):
         eu = quote(share_url, safe="")
         et = quote(share_text, safe="")
         share_html = (
-            f'<a class="share-btn" href="https://twitter.com/intent/tweet?text={et}&url={eu}" target="_blank" rel="noopener" aria-label="X (Twitter) \u3067\u5171\u6709 (\u65b0\u3057\u3044\u30bf\u30d6)">X Post</a>'
-            f'<a class="share-btn" href="https://www.facebook.com/sharer/sharer.php?u={eu}" target="_blank" rel="noopener" aria-label="Facebook \u3067\u5171\u6709 (\u65b0\u3057\u3044\u30bf\u30d6)">Facebook</a>'
-            f'<a class="share-btn" href="https://social-plugins.line.me/lineit/share?url={eu}" target="_blank" rel="noopener" aria-label="LINE \u3067\u5171\u6709 (\u65b0\u3057\u3044\u30bf\u30d6)">LINE</a>'
-            f'<button type="button" class="share-btn" data-copy-url="{esc(share_url)}"><span aria-hidden="true">\U0001f4cb</span> URL\u3092\u30b3\u30d4\u30fc</button>'
+            f'<a class="share-btn" href="https://twitter.com/intent/tweet?text={et}&url={eu}" target="_blank" rel="noopener" data-share-kind="x" aria-label="X (Twitter) \u3067\u5171\u6709 (\u65b0\u3057\u3044\u30bf\u30d6)">X Post</a>'
+            f'<a class="share-btn" href="https://www.facebook.com/sharer/sharer.php?u={eu}" target="_blank" rel="noopener" data-share-kind="fb" aria-label="Facebook \u3067\u5171\u6709 (\u65b0\u3057\u3044\u30bf\u30d6)">Facebook</a>'
+            f'<a class="share-btn" href="https://social-plugins.line.me/lineit/share?url={eu}" target="_blank" rel="noopener" data-share-kind="line" aria-label="LINE \u3067\u5171\u6709 (\u65b0\u3057\u3044\u30bf\u30d6)">LINE</a>'
+            f'<button type="button" class="share-btn" data-share-kind="copy" data-copy-url="{esc(share_url)}"><span aria-hidden="true">\U0001f4cb</span> <span class="copy-label">URL\u3092\u30b3\u30d4\u30fc</span></button>'
         )
         page = page.replace("{{SHARE_BUTTONS}}", share_html)
 

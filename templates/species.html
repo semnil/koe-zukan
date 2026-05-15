@@ -20,10 +20,10 @@
 <meta name="twitter:image" content="{{SITE_URL}}/species/{{ID}}/ogp.png">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="canonical" href="{{SITE_URL}}/species/{{ID}}/">
-<link rel="alternate" hreflang="ja" href="{{SITE_URL}}/?lang=ja&amp;id={{ID}}">
-<link rel="alternate" hreflang="en" href="{{SITE_URL}}/?lang=en&amp;id={{ID}}">
-<link rel="alternate" hreflang="ko" href="{{SITE_URL}}/?lang=ko&amp;id={{ID}}">
-<link rel="alternate" hreflang="zh" href="{{SITE_URL}}/?lang=zh&amp;id={{ID}}">
+<link rel="alternate" hreflang="ja" href="{{SITE_URL}}/species/{{ID}}/?lang=ja">
+<link rel="alternate" hreflang="en" href="{{SITE_URL}}/species/{{ID}}/?lang=en">
+<link rel="alternate" hreflang="ko" href="{{SITE_URL}}/species/{{ID}}/?lang=ko">
+<link rel="alternate" hreflang="zh" href="{{SITE_URL}}/species/{{ID}}/?lang=zh">
 <link rel="alternate" hreflang="x-default" href="{{SITE_URL}}/species/{{ID}}/">
 <style>
 :root {
@@ -70,6 +70,11 @@ body {
 .top-bar {
   background: linear-gradient(135deg, #064e3b 0%, #047857 100%);
   padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 .top-bar a {
   color: white;
@@ -78,6 +83,27 @@ body {
   opacity: 0.9;
 }
 .top-bar a:hover { opacity: 1; }
+.lang-tabs {
+  display: flex;
+  gap: 0.3rem;
+}
+.lang-tab {
+  padding: 0.55rem 0.75rem;
+  min-height: 44px;
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255,255,255,0.92);
+  font-size: 0.72rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.lang-tab.active {
+  background: rgba(255,255,255,0.95);
+  color: var(--accent);
+  border-color: rgba(255,255,255,0.95);
+  font-weight: 600;
+}
 .species-page {
   max-width: 700px;
   margin: 1.5rem auto;
@@ -246,38 +272,39 @@ footer {
 </head>
 <body>
 
-<a href="#main" class="skip-link">コンテンツへスキップ</a>
+<a href="#main" class="skip-link" data-i18n="skipLink">コンテンツへスキップ</a>
 
-<nav class="top-bar" aria-label="サイトナビゲーション">
-  <a href="/">← 動物の鳴き声図鑑</a>
+<nav class="top-bar" id="topNav" aria-label="サイトナビゲーション">
+  <a href="/" id="topBarLink" data-i18n="topBar">← 動物の鳴き声図鑑</a>
+  <div class="lang-tabs" id="langTabs" role="group" aria-label="表示言語"></div>
 </nav>
 
 <main id="main" class="species-page">
   <div class="species-card">
-    <span class="class-tag {{CLASS_CSS}}">{{CLASS_ICON}} {{CLASS}} / {{ORDER}} / {{FAMILY}}</span>
-    <h1>{{NAME_JA}}</h1>
-    <div class="en-name" lang="en">{{NAME_EN}}{{ALT_EN}}</div>
+    <span class="class-tag {{CLASS_CSS}}" id="classTag">{{CLASS_ICON}} {{CLASS}} / {{ORDER}} / {{FAMILY}}</span>
+    <h1 id="speciesName">{{NAME_JA}}</h1>
+    <div class="en-name" id="speciesAltName" lang="en">{{NAME_EN}}{{ALT_EN}}</div>
     <div class="sci" lang="la">{{SCIENTIFIC_NAME}}</div>
 
     {{ONO_SECTION}}
 
     <div class="detail-section">
-      <h3>基本情報</h3>
-      <div class="detail-row"><span class="detail-label">発声方法</span><span>{{VOICE_METHOD}}</span></div>
-      <div class="detail-row"><span class="detail-label">保全状況</span><span>{{CONSERVATION}}</span></div>
-      <div class="detail-row"><span class="detail-label">生息地域</span><span>{{REGIONS}}</span></div>
+      <h3 data-i18n="infoSection">基本情報</h3>
+      <div class="detail-row"><span class="detail-label" data-i18n="voiceMethod">発声方法</span><span id="voiceMethodValue">{{VOICE_METHOD}}</span></div>
+      <div class="detail-row"><span class="detail-label" data-i18n="conservation">保全状況</span><span id="conservationValue">{{CONSERVATION}}</span></div>
+      <div class="detail-row"><span class="detail-label" data-i18n="regions">生息地域</span><span id="regionsValue">{{REGIONS}}</span></div>
       {{NOTE}}
     </div>
 
     <div class="detail-section">
-      <h3>外部リンク</h3>
+      <h3 data-i18n="linksSection">外部リンク</h3>
       <div class="detail-links">
 {{LINKS}}
       </div>
     </div>
 
     <div class="share-section">
-      <h3>共有 / Share</h3>
+      <h3 data-i18n="shareSection">共有 / Share</h3>
       <div class="share-buttons">
         {{SHARE_BUTTONS}}
       </div>
@@ -286,24 +313,375 @@ footer {
     {{RELATED_SPECIES}}
   </div>
 
-  <a href="/?id={{ID}}" class="back-link">← 図鑑で表示</a>
+  <a href="/?id={{ID}}" class="back-link" id="backLink" data-i18n="backLink">← 図鑑で表示</a>
 </main>
 
 <script>
-function copyShareUrl(url, btn) {
-  navigator.clipboard.writeText(url).then(function() {
-    btn.classList.add("copied");
-    btn.textContent = "\u2713 コピーしました";
-    setTimeout(function() { btn.classList.remove("copied"); btn.innerHTML = '<span aria-hidden="true">\ud83d\udccb</span> URLをコピー'; }, 2000);
-  }).catch(function() {
-    btn.textContent = "コピー失敗";
-    setTimeout(function() { btn.innerHTML = '<span aria-hidden="true">\ud83d\udccb</span> URLをコピー'; }, 2000);
+// SPECIES_DATA / RELATED_DATA are emitted by build.py as a JSON literal with
+// < > & escaped to \uXXXX, so the payload cannot prematurely close this
+// <script> block even when fields contain hostile text.
+const SPECIES_DATA = {{SPECIES_DATA_JSON}};
+const RELATED_DATA = {{RELATED_DATA_JSON}};
+
+const LANG_LABELS = { ja: "日本語", en: "English", ko: "한국어", zh: "中文" };
+
+const I18N = {
+  ja: {
+    htmlLang: "ja",
+    title: (name, alt) => alt ? `${name} (${alt}) — 動物の鳴き声図鑑` : `${name} — 動物の鳴き声図鑑`,
+    skipLink: "コンテンツへスキップ",
+    topBar: "← 動物の鳴き声図鑑",
+    onoSection: "オノマトペ / Onomatopoeia",
+    infoSection: "基本情報",
+    voiceMethod: "発声方法",
+    conservation: "保全状況",
+    regions: "生息地域",
+    note: "備考",
+    linksSection: "外部リンク",
+    shareSection: "共有 / Share",
+    related: "同じ仲間の動物",
+    backLink: "← 図鑑で表示",
+    langTabsLabel: "表示言語",
+    siteNav: "サイトナビゲーション",
+    silentDash: "—",
+    copyLabel: "URLをコピー",
+    copyOk: "✓ コピーしました",
+    copyFail: "コピー失敗",
+    shareX: "X (Twitter) で共有 (新しいタブ)",
+    shareFB: "Facebook で共有 (新しいタブ)",
+    shareLINE: "LINE で共有 (新しいタブ)",
+    ariaCommons: "Wikimedia Commons (新しいタブで開く)",
+    ariaXC: "xeno-canto (新しいタブで開く)",
+    ariaML: "Macaulay Library (新しいタブで開く)",
+    ariaWikiJA: "Wikipedia 日本語版 (新しいタブで開く)",
+    ariaWikiEN: "Wikipedia 英語版 (新しいタブで開く)",
+    noVoice: "鳴き声なし",
+    iucnLabel: { LC: "低懸念", NT: "準絶滅危惧", VU: "危急", EN: "絶滅危惧", CR: "深刻な危機", DD: "データ不足", NE: "未評価", EW: "野生絶滅", EX: "絶滅" },
+  },
+  en: {
+    htmlLang: "en",
+    title: (name, alt) => alt ? `${name} (${alt}) — Animal Sound Encyclopedia` : `${name} — Animal Sound Encyclopedia`,
+    skipLink: "Skip to content",
+    topBar: "← Animal Sound Encyclopedia",
+    onoSection: "Onomatopoeia",
+    infoSection: "Info",
+    voiceMethod: "Voice",
+    conservation: "Status",
+    regions: "Habitat",
+    note: "Note",
+    linksSection: "External links",
+    shareSection: "Share",
+    related: "Related species",
+    backLink: "← Back to encyclopedia",
+    langTabsLabel: "Display language",
+    siteNav: "Site navigation",
+    silentDash: "—",
+    copyLabel: "Copy URL",
+    copyOk: "✓ Copied",
+    copyFail: "Copy failed",
+    shareX: "Share on X (Twitter) (new tab)",
+    shareFB: "Share on Facebook (new tab)",
+    shareLINE: "Share on LINE (new tab)",
+    ariaCommons: "Wikimedia Commons (opens in new tab)",
+    ariaXC: "xeno-canto (opens in new tab)",
+    ariaML: "Macaulay Library (opens in new tab)",
+    ariaWikiJA: "Wikipedia (Japanese) (opens in new tab)",
+    ariaWikiEN: "Wikipedia (English) (opens in new tab)",
+    noVoice: "Silent",
+    iucnLabel: { LC: "Least Concern", NT: "Near Threatened", VU: "Vulnerable", EN: "Endangered", CR: "Critically Endangered", DD: "Data Deficient", NE: "Not Evaluated", EW: "Extinct in the Wild", EX: "Extinct" },
+  },
+  ko: {
+    htmlLang: "ko",
+    title: (name, alt) => alt ? `${name} (${alt}) — 동물 울음소리 도감` : `${name} — 동물 울음소리 도감`,
+    skipLink: "콘텐츠로 건너뛰기",
+    topBar: "← 동물 울음소리 도감",
+    onoSection: "의성어",
+    infoSection: "기본 정보",
+    voiceMethod: "발성",
+    conservation: "보전 상태",
+    regions: "서식지",
+    note: "비고",
+    linksSection: "외부 링크",
+    shareSection: "공유",
+    related: "관련 동물",
+    backLink: "← 도감으로 돌아가기",
+    langTabsLabel: "표시 언어",
+    siteNav: "사이트 내비게이션",
+    silentDash: "—",
+    copyLabel: "URL 복사",
+    copyOk: "✓ 복사했습니다",
+    copyFail: "복사 실패",
+    shareX: "X(Twitter)에서 공유 (새 탭)",
+    shareFB: "Facebook에서 공유 (새 탭)",
+    shareLINE: "LINE에서 공유 (새 탭)",
+    ariaCommons: "Wikimedia Commons (새 탭에서 열기)",
+    ariaXC: "xeno-canto (새 탭에서 열기)",
+    ariaML: "Macaulay Library (새 탭에서 열기)",
+    ariaWikiJA: "Wikipedia 일본어판 (새 탭에서 열기)",
+    ariaWikiEN: "Wikipedia 영어판 (새 탭에서 열기)",
+    noVoice: "소리 없음",
+    iucnLabel: { LC: "관심대상", NT: "준위협", VU: "취약", EN: "위기", CR: "위급", DD: "정보부족", NE: "미평가", EW: "야생절멸", EX: "절멸" },
+  },
+  zh: {
+    htmlLang: "zh",
+    title: (name, alt) => alt ? `${name}（${alt}）— 动物叫声图鉴` : `${name} — 动物叫声图鉴`,
+    skipLink: "跳到内容",
+    topBar: "← 动物叫声图鉴",
+    onoSection: "拟声词",
+    infoSection: "基本信息",
+    voiceMethod: "发声",
+    conservation: "保护状态",
+    regions: "栖息地",
+    note: "备注",
+    linksSection: "外部链接",
+    shareSection: "分享",
+    related: "相关动物",
+    backLink: "← 返回图鉴",
+    langTabsLabel: "显示语言",
+    siteNav: "站点导航",
+    silentDash: "—",
+    copyLabel: "复制网址",
+    copyOk: "✓ 已复制",
+    copyFail: "复制失败",
+    shareX: "在 X (Twitter) 上分享（新标签）",
+    shareFB: "在 Facebook 上分享（新标签）",
+    shareLINE: "在 LINE 上分享（新标签）",
+    ariaCommons: "Wikimedia Commons（在新标签页打开）",
+    ariaXC: "xeno-canto（在新标签页打开）",
+    ariaML: "Macaulay Library（在新标签页打开）",
+    ariaWikiJA: "维基百科日文版（在新标签页打开）",
+    ariaWikiEN: "维基百科英文版（在新标签页打开）",
+    noVoice: "无叫声",
+    iucnLabel: { LC: "无危", NT: "近危", VU: "易危", EN: "濒危", CR: "极危", DD: "数据缺乏", NE: "未予评估", EW: "野外灭绝", EX: "灭绝" },
+  },
+};
+
+// URL ?lang= takes precedence; otherwise sniff navigator.language. Anything
+// outside the four supported languages falls back to English (the
+// best-effort lingua franca for non-CJK visitors).
+function detectLang() {
+  try {
+    const urlLang = new URL(location).searchParams.get("lang");
+    if (urlLang && I18N[urlLang]) return urlLang;
+  } catch (e) { /* file:// or malformed location */ }
+  const lang = (navigator.language || "").toLowerCase();
+  if (lang.startsWith("ja")) return "ja";
+  if (lang.startsWith("ko")) return "ko";
+  if (lang.startsWith("zh")) return "zh";
+  return "en";
+}
+
+let currentLang = detectLang();
+
+function esc(s) {
+  if (s === null || s === undefined) return "";
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+// Append ?lang=xx unless ja (which is the canonical / parameter-free form).
+function withLang(path, code) {
+  if (!code || code === "ja") return path;
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}lang=${encodeURIComponent(code)}`;
+}
+
+function pickLocalized(data, code) {
+  return data[code] || data.en || data.ja || "";
+}
+
+function applyLang(code) {
+  if (!I18N[code]) code = "en";
+  currentLang = code;
+  const L = I18N[code];
+
+  document.documentElement.lang = L.htmlLang;
+
+  // Title / description meta. og:locale tracks the active display language
+  // so OGP previews announce the correct locale when shared.
+  const displayName = pickLocalized(SPECIES_DATA.name, code);
+  const altDisplay = code === "ja" ? SPECIES_DATA.name.en : SPECIES_DATA.name.ja;
+  document.title = L.title(displayName, altDisplay);
+  const ogLocale = document.querySelector('meta[property="og:locale"]');
+  if (ogLocale) {
+    const map = { ja: "ja_JP", en: "en_US", ko: "ko_KR", zh: "zh_CN" };
+    ogLocale.setAttribute("content", map[code] || "en_US");
+  }
+
+  // Skip link / nav / lang tabs labels
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (L[key] !== undefined) el.textContent = L[key];
+  });
+
+  const nav = document.getElementById('topNav');
+  if (nav) nav.setAttribute('aria-label', L.siteNav);
+  const langTabs = document.getElementById('langTabs');
+  if (langTabs) langTabs.setAttribute('aria-label', L.langTabsLabel);
+
+  // Top bar / back-link hrefs preserve the chosen language so the next
+  // navigation continues in the same display language.
+  const topLink = document.getElementById('topBarLink');
+  if (topLink) topLink.setAttribute('href', withLang('/', code));
+  const backLink = document.getElementById('backLink');
+  if (backLink) backLink.setAttribute('href', withLang(`/?id=${encodeURIComponent(SPECIES_DATA.id)}`, code));
+
+  // Class / order / family label uses the JA original under ja, otherwise EN.
+  const classTag = document.getElementById('classTag');
+  if (classTag) {
+    const key = code === "ja" ? "ja" : "en";
+    const cls = SPECIES_DATA.class[key];
+    const ord = SPECIES_DATA.order[key];
+    const fam = SPECIES_DATA.family[key];
+    classTag.textContent = `${SPECIES_DATA.classIcon} ${cls} / ${ord} / ${fam}`;
+  }
+
+  // Species name / alt name. ja shows nameJA + nameEN (+ altEN); other
+  // languages show nameEN as the main label and fall back to nameJA as alt.
+  const speciesName = document.getElementById('speciesName');
+  if (speciesName) speciesName.textContent = displayName;
+  const speciesAlt = document.getElementById('speciesAltName');
+  if (speciesAlt) {
+    if (code === "ja") {
+      const altEn = SPECIES_DATA.alt.en;
+      speciesAlt.textContent = altEn
+        ? `${SPECIES_DATA.name.en} (${altEn})`
+        : SPECIES_DATA.name.en;
+      speciesAlt.setAttribute('lang', 'en');
+    } else {
+      speciesAlt.textContent = SPECIES_DATA.name.ja;
+      speciesAlt.setAttribute('lang', 'ja');
+    }
+  }
+
+  // Voice method value. The "—" placeholder is preserved when no method
+  // exists; otherwise rotate through ja/en variants.
+  const vmValue = document.getElementById('voiceMethodValue');
+  if (vmValue) {
+    const vmJa = SPECIES_DATA.voiceMethod.ja;
+    if (!vmJa) {
+      vmValue.textContent = L.silentDash;
+    } else if (vmJa === "鳴き声なし") {
+      vmValue.textContent = L.noVoice;
+    } else {
+      vmValue.textContent = code === "ja" ? vmJa : SPECIES_DATA.voiceMethod.en;
+    }
+  }
+
+  // Conservation: "<CODE> (<localized label>)"
+  const consValue = document.getElementById('conservationValue');
+  if (consValue) {
+    const cons = SPECIES_DATA.conservation;
+    const lbl = L.iucnLabel[cons];
+    consValue.textContent = lbl ? `${cons} (${lbl})` : cons;
+  }
+
+  // Regions: join with locale-appropriate separator.
+  const regionsValue = document.getElementById('regionsValue');
+  if (regionsValue) {
+    const sep = code === "ja" ? "、" : (code === "zh" ? "、" : ", ");
+    const list = SPECIES_DATA.regions
+      .map(r => r[code === "ja" ? "ja" : "en"])
+      .filter(Boolean);
+    regionsValue.textContent = list.length ? list.join(sep) : SPECIES_DATA.habitat;
+  }
+
+  // Onomatopoeia cell lang labels stay as language names (日本語/English/한국어/中文)
+  // regardless of the chosen display language — they identify the linguistic
+  // origin of each onomatopoeia, not the UI chrome.
+
+  // External link aria-labels
+  const ariaMap = {
+    "commons": L.ariaCommons,
+    "xc": L.ariaXC,
+    "ml": L.ariaML,
+    "wiki-ja": L.ariaWikiJA,
+    "wiki-en": L.ariaWikiEN,
+  };
+  document.querySelectorAll('[data-link-kind]').forEach(el => {
+    const aria = ariaMap[el.dataset.linkKind];
+    if (aria) el.setAttribute('aria-label', aria);
+  });
+
+  // Share button aria-labels + copy text
+  const shareAria = { x: L.shareX, fb: L.shareFB, line: L.shareLINE };
+  document.querySelectorAll('[data-share-kind]').forEach(el => {
+    const kind = el.dataset.shareKind;
+    if (shareAria[kind]) el.setAttribute('aria-label', shareAria[kind]);
+    if (kind === "copy") {
+      const label = el.querySelector('.copy-label');
+      if (label) label.textContent = L.copyLabel;
+    }
+  });
+
+  // Related species re-render. Lazy switch keeps the initial Japanese HTML
+  // available for crawlers / no-JS visitors.
+  const relatedGrid = document.querySelector('.related-grid');
+  if (relatedGrid && RELATED_DATA && RELATED_DATA.length) {
+    relatedGrid.innerHTML = RELATED_DATA.map(r => {
+      const name = r.name[code === "ja" ? "ja" : "en"] || r.name.ja;
+      const ono = r.ono[code] || r.ono.ja || "";
+      const href = withLang(`/species/${encodeURIComponent(r.id)}/`, code);
+      const onoSpan = ono ? `<span class="related-ono">${esc(ono)}</span>` : "";
+      return `<a href="${esc(href)}" class="related-item"><span class="related-name">${esc(name)}</span>${onoSpan}</a>`;
+    }).join("");
+  }
+
+  // Lang tabs active state
+  document.querySelectorAll('.lang-tab').forEach(btn => {
+    const isActive = btn.dataset.lang === code;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-pressed', String(isActive));
+  });
+
+  // Reflect chosen language in URL (preserves it across share / refresh)
+  try {
+    const url = new URL(location);
+    if (code === "ja") url.searchParams.delete("lang");
+    else url.searchParams.set("lang", code);
+    history.replaceState(history.state || {}, "", url);
+  } catch (e) { /* ignore */ }
+}
+
+function renderLangTabs() {
+  const container = document.getElementById('langTabs');
+  if (!container) return;
+  container.innerHTML = "";
+  Object.entries(LANG_LABELS).forEach(([code, label]) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'lang-tab' + (code === currentLang ? ' active' : '');
+    btn.textContent = label;
+    btn.dataset.lang = code;
+    btn.setAttribute('aria-pressed', String(code === currentLang));
+    btn.addEventListener('click', () => applyLang(code));
+    container.appendChild(btn);
   });
 }
+
+function copyShareUrl(url, btn) {
+  const L = I18N[currentLang] || I18N.en;
+  navigator.clipboard.writeText(url).then(function() {
+    btn.classList.add("copied");
+    btn.textContent = L.copyOk;
+    setTimeout(function() {
+      btn.classList.remove("copied");
+      btn.innerHTML = '<span aria-hidden="true">📋</span> <span class="copy-label">' + L.copyLabel + '</span>';
+    }, 2000);
+  }).catch(function() {
+    btn.textContent = L.copyFail;
+    setTimeout(function() {
+      btn.innerHTML = '<span aria-hidden="true">📋</span> <span class="copy-label">' + L.copyLabel + '</span>';
+    }, 2000);
+  });
+}
+
 document.addEventListener("click", function(e) {
   var btn = e.target.closest("[data-copy-url]");
   if (btn) copyShareUrl(btn.dataset.copyUrl, btn);
 });
+
+renderLangTabs();
+applyLang(currentLang);
 </script>
 
 <footer>

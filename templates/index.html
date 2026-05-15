@@ -21,11 +21,31 @@
 <meta name="twitter:image" content="{{SITE_URL}}/ogp.png">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="manifest.json">
+<link rel="canonical" href="{{SITE_URL}}/">
 <link rel="alternate" hreflang="ja" href="{{SITE_URL}}/?lang=ja">
 <link rel="alternate" hreflang="en" href="{{SITE_URL}}/?lang=en">
 <link rel="alternate" hreflang="ko" href="{{SITE_URL}}/?lang=ko">
 <link rel="alternate" hreflang="zh" href="{{SITE_URL}}/?lang=zh">
 <link rel="alternate" hreflang="x-default" href="{{SITE_URL}}/">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "動物の鳴き声図鑑",
+  "alternateName": "Animal Sound Encyclopedia",
+  "url": "{{SITE_URL}}/",
+  "description": "世界の動物{{SPECIES_COUNT}}種の鳴き声オノマトペを日本語・英語・韓国語・中国語で検索できる図鑑",
+  "inLanguage": ["ja", "en", "ko", "zh"],
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": {
+      "@type": "EntryPoint",
+      "urlTemplate": "{{SITE_URL}}/?q={search_term_string}"
+    },
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js"></script>
 <style>
 :root {
@@ -85,15 +105,24 @@ body {
 header {
   background: linear-gradient(135deg, #064e3b 0%, #047857 100%);
   color: white;
-  padding: 2rem 1rem 1.5rem;
-  text-align: center;
+  padding: 1.5rem 1rem;
 }
-header h1 {
+.header-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.header-title { text-align: left; }
+.header-title h1 {
   font-size: 1.6rem;
   font-weight: 700;
   margin-bottom: 0.25rem;
 }
-header p {
+.header-title p {
   font-size: 0.85rem;
   opacity: 0.85;
 }
@@ -189,12 +218,11 @@ header p {
   max-width: 900px;
   margin: 1rem auto 0.5rem;
   padding: 0 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   font-size: 0.8rem;
   color: var(--text2);
 }
+/* Language tabs live in the header so the control is reachable from both
+ * the encyclopedia index and individual species pages without scrolling. */
 .lang-tabs {
   display: flex;
   gap: 0.3rem;
@@ -202,18 +230,18 @@ header p {
 .lang-tab {
   padding: 0.55rem 0.75rem;
   min-height: 44px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255,255,255,0.4);
   border-radius: 4px;
-  background: var(--card);
+  background: transparent;
+  color: rgba(255,255,255,0.92);
   font-size: 0.72rem;
   cursor: pointer;
   font-family: inherit;
-  color: var(--text2);
 }
 .lang-tab.active {
-  background: var(--accent-light);
+  background: rgba(255,255,255,0.95);
   color: var(--accent);
-  border-color: var(--accent);
+  border-color: rgba(255,255,255,0.95);
   font-weight: 600;
 }
 
@@ -507,8 +535,13 @@ footer {
 <a href="#main" class="skip-link">コンテンツへスキップ</a>
 
 <header>
-  <h1>動物の鳴き声図鑑</h1>
-  <p>Animal Sound Encyclopedia &mdash; {{SPECIES_COUNT}} species / {{LANGUAGE_COUNT}} languages</p>
+  <div class="header-inner">
+    <div class="header-title">
+      <h1>動物の鳴き声図鑑</h1>
+      <p>Animal Sound Encyclopedia &mdash; {{SPECIES_COUNT}} species / {{LANGUAGE_COUNT}} languages</p>
+    </div>
+    <div class="lang-tabs" id="langTabs" role="group" aria-label="表示言語"></div>
+  </div>
 </header>
 
 <main id="main">
@@ -529,7 +562,6 @@ footer {
 
 <div class="stats-bar">
   <span id="resultCount" aria-live="polite" aria-atomic="true"></span>
-  <div class="lang-tabs" id="langTabs"></div>
 </div>
 
 <div class="results" id="results"></div>
@@ -593,6 +625,12 @@ const MODAL_HINT = {
 };
 const CLOSE_LABEL = {
   ja: "閉じる (Esc キー)", en: "Close (Esc)", ko: "닫기 (Esc)", zh: "关闭 (Esc)",
+};
+const DETAIL_LINK_LABEL = {
+  ja: "詳細ページで見る →",
+  en: "View detail page →",
+  ko: "상세 페이지 보기 →",
+  zh: "查看详细页面 →",
 };
 const ALL_LABEL = { ja: "すべて", en: "All", ko: "모두", zh: "全部" };
 const SEARCH_LABELS = {
@@ -659,14 +697,17 @@ let fuse = null;
 let activeClass = null;
 let displayLang = (() => {
   // URL ?lang= takes precedence over navigator.language so shared links
-  // preserve the sender's chosen display language (H5).
+  // preserve the sender's chosen display language (H5). English is the
+  // fallback for unsupported locales — assuming Japanese for a French or
+  // German visitor displays Kanji they cannot read; English serves as the
+  // best-effort lingua franca for non-CJK languages.
   const urlLang = new URL(location).searchParams.get("lang");
   if (urlLang && LANG_LABELS.hasOwnProperty(urlLang)) return urlLang;
-  const lang = (navigator.language || "ja").toLowerCase();
+  const lang = (navigator.language || "").toLowerCase();
+  if (lang.startsWith("ja")) return "ja";
   if (lang.startsWith("ko")) return "ko";
   if (lang.startsWith("zh")) return "zh";
-  if (lang.startsWith("en")) return "en";
-  return "ja";
+  return "en";
 })();
 
 function applyDisplayLang(code) {
@@ -813,6 +854,16 @@ async function init() {
     if (id) openModal(id, false);
     else closeModal(false);
   });
+
+  // Optional initial query string from the SearchAction structured data
+  // (`?q=...`). Lets search engines deep-link directly into a result set
+  // and lets browser search bars do the same.
+  const initQuery = new URL(location).searchParams.get("q");
+  if (initQuery) {
+    searchInput.value = initQuery;
+    syncClearVisibility();
+    onSearch();
+  }
 
   // Open card from URL parameter on initial load
   const initId = new URL(location).searchParams.get("id");
@@ -1026,7 +1077,7 @@ function openModal(id, pushState = true) {
     </div>`;
     })()}
 
-    <a href="/species/${esc(a.id)}/" class="species-detail-link">詳細ページで見る →</a>
+    <a href="/species/${esc(a.id)}/${displayLang === "ja" ? "" : "?lang=" + encodeURIComponent(displayLang)}" class="species-detail-link">${esc(DETAIL_LINK_LABEL[displayLang] || DETAIL_LINK_LABEL.ja)}</a>
     <p class="modal-hint">${esc(MODAL_HINT[displayLang] || MODAL_HINT.ja)}</p>
   `;
   document.getElementById("modalCloseBtn").addEventListener("click", () => closeModal());
