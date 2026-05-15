@@ -1024,6 +1024,119 @@ class TestSpeciesPageI18nPayload:
         assert "\\u003cscript\\u003e" in body
 
 
+# ── Onomatopoeia pronunciation play buttons (Web Speech API) ────
+
+
+class TestOnomatopoeiaPlayButtons:
+    """Each onomatopoeia cell on the species page must carry a Web Speech API
+    play button so visitors can hear how the onomatopoeia is pronounced in its
+    source language. The contract: every cell with a non-empty onomatopoeia
+    string ships an <button class="ono-play"> with data-play-lang and
+    data-play-text attributes that the species page script reads.
+    """
+
+    def _make_animal(self, aid="B001"):
+        return {
+            "id": aid,
+            "nameJA": "スズメ",
+            "nameEN": "Eurasian Tree Sparrow",
+            "scientificName": "Passer montanus",
+            "altJA": "すずめ",
+            "altEN": "",
+            "class": "鳥綱",
+            "classEN": "Birds",
+            "order": "スズメ目",
+            "orderEN": "Passeriformes",
+            "family": "スズメ科",
+            "familyEN": "Passeridae",
+            "voiceMethod": "鳴管",
+            "conservation": "LC",
+            "habitat": "ユーラシア",
+            "note": "",
+            "imageRef": "",
+            "audioRef": "",
+            "onomatopoeiaJA": "チュンチュン",
+            "hasVoice": "あり",
+            "onomatopoeia": [
+                {"lang": "ja", "onomatopoeia": "チュンチュン", "scene": "さえずり", "note": ""},
+                {"lang": "en", "onomatopoeia": "Chirp chirp", "scene": "", "note": ""},
+                {"lang": "ko", "onomatopoeia": "짹짹", "scene": "", "note": ""},
+                {"lang": "zh", "onomatopoeia": "啾啾", "scene": "", "note": ""},
+            ],
+            "regions": [{"id": "R01", "nameJA": "日本", "nameEN": "Japan"}],
+        }
+
+    def _read_page(self, tmp_path, aid="B001"):
+        animal = self._make_animal(aid)
+        build.generate_species_pages([animal], tmp_path)
+        return (tmp_path / "species" / aid / "index.html").read_text(encoding="utf-8")
+
+    def test_play_button_emitted_per_language(self, tmp_path):
+        page = self._read_page(tmp_path)
+        # One button per onomatopoeia language (4 cells in the fixture).
+        assert page.count('class="ono-play"') == 4
+
+    def test_play_button_carries_language_and_text(self, tmp_path):
+        page = self._read_page(tmp_path)
+        # The script reads these data-* attrs to feed SpeechSynthesisUtterance.
+        assert 'data-play-lang="ja" data-play-text="チュンチュン"' in page
+        assert 'data-play-lang="en" data-play-text="Chirp chirp"' in page
+        assert 'data-play-lang="ko" data-play-text="짹짹"' in page
+        assert 'data-play-lang="zh" data-play-text="啾啾"' in page
+
+    def test_play_button_has_initial_aria_label(self, tmp_path):
+        page = self._read_page(tmp_path)
+        # Page is rendered in Japanese by default, so the initial aria-label
+        # spells the source language name in Japanese (English → 英語 etc.).
+        # JS swaps these via updatePlayLabels() when the UI language changes.
+        assert 'aria-label="日本語の発音を再生"' in page
+        assert 'aria-label="英語の発音を再生"' in page
+        assert 'aria-label="韓国語の発音を再生"' in page
+        assert 'aria-label="中国語の発音を再生"' in page
+
+    def test_play_button_text_html_escaped(self, tmp_path):
+        """Onomatopoeia containing HTML markup must not break the button attr."""
+        animal = self._make_animal("X001")
+        animal["onomatopoeia"] = [
+            {"lang": "ja", "onomatopoeia": '<script>alert(1)</script>', "scene": "", "note": ""},
+        ]
+        build.generate_species_pages([animal], tmp_path)
+        page = (tmp_path / "species" / "X001" / "index.html").read_text(encoding="utf-8")
+        assert 'data-play-text="&lt;script&gt;alert(1)&lt;/script&gt;"' in page
+        assert '<script>alert(1)</script>' not in page
+
+    def test_play_button_helper_constants_in_script(self, tmp_path):
+        page = self._read_page(tmp_path)
+        # Script-side helpers the build contract depends on.
+        for marker in (
+            "PLAY_LANG_MAP",
+            "LANG_NAMES_LOCALIZED",
+            "PLAY_LABELS",
+            "speakOnomatopoeia",
+            "updatePlayLabels",
+            "TTS_SUPPORTED",
+        ):
+            assert marker in page, f"missing helper: {marker}"
+
+    def test_play_button_bcp47_mapping_complete(self, tmp_path):
+        page = self._read_page(tmp_path)
+        # All four language tags must be reachable from PLAY_LANG_MAP so the
+        # button's data-play-lang resolves to a BCP-47 tag.
+        for tag in ('"ja-JP"', '"en-US"', '"ko-KR"', '"zh-CN"'):
+            assert tag in page, f"missing BCP-47 tag: {tag}"
+
+    def test_play_button_skipped_for_empty_onomatopoeia(self, tmp_path):
+        """Empty onomatopoeia rows must NOT generate a play button."""
+        animal = self._make_animal("X001")
+        animal["onomatopoeia"] = [
+            {"lang": "ja", "onomatopoeia": "チュン", "scene": "", "note": ""},
+            {"lang": "en", "onomatopoeia": "", "scene": "", "note": ""},
+        ]
+        build.generate_species_pages([animal], tmp_path)
+        page = (tmp_path / "species" / "X001" / "index.html").read_text(encoding="utf-8")
+        assert page.count('class="ono-play"') == 1
+
+
 # ── _json_for_inline_script (XSS-safe JSON emission) ────
 
 
