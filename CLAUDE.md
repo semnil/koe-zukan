@@ -13,7 +13,8 @@ koe-zukan/
 ├── .github/
 │   ├── FUNDING.yml        ← GitHub Sponsors
 │   └── workflows/
-│       └── deploy.yml     ← GitHub Pages デプロイ (Python 3.12 + openpyxl + Pillow)
+│       ├── deploy.yml     ← GitHub Pages デプロイ (Python 3.12 + openpyxl + Pillow)
+│       └── workflow-checks.yml ← 全 PR で uses: の SHA 固定を検査
 ├── data/
 │   ├── animal-sounds-data.xlsx  ← マスターデータ（唯一の真のソース）
 │   └── no-audio.json      ← Macaulay Library 音声なしリスト (check_audio.py で生成)
