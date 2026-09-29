@@ -12,9 +12,12 @@ koe-zukan/
 ├── CLAUDE.md              ← このファイル
 ├── .github/
 │   ├── FUNDING.yml        ← GitHub Sponsors
+│   ├── tests/
+│   │   └── workflow-checks-test.sh ← workflow-checks.yml を偽の gh とフィクスチャの git tree で実行するテスト
 │   └── workflows/
 │       ├── deploy.yml     ← GitHub Pages デプロイ (Python 3.12 + openpyxl + Pillow)
-│       └── workflow-checks.yml ← 全 PR で uses: の SHA 固定を検査
+│       ├── workflow-checks.yml ← 全 PR で uses: の SHA 固定と同一リポジトリ参照の規則を検査
+│       └── workflow-checks-test.yml ← 検査のフィクスチャテストを実行
 ├── data/
 │   ├── animal-sounds-data.xlsx  ← マスターデータ（唯一の真のソース）
 │   └── no-audio.json      ← Macaulay Library 音声なしリスト (check_audio.py で生成)
