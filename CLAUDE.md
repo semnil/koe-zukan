@@ -333,3 +333,5 @@ python -m pytest tests/test_build.py --cov=scripts --cov-report=term-missing
 
 - 第5言語以降の追加（オノマトペマッピングに行を追加するだけで対応可能）
 - Fuse.js のローカルバンドル（PWA オフライン完全対応）
+
+<!-- probe -->
