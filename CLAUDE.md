@@ -174,7 +174,7 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
 - URL パラメータ `?id=` でカード直接リンク、`?q=` で初期検索クエリ (`WebSite` JSON-LD の SearchAction `urlTemplate` 契約)
 - Google Search Console 連携 (サイトマップ + 所有権確認メタタグ)
 - 関連種リンク: 種ページに「同じ仲間の動物」セクション (family→order→class→phylum の 4 段フォールバック、最大 4 件) — SEO 内部リンク強化
-- オノマトペ発音再生 (種ページ): 各オノマトペセル (`.ono-cell`) に `🔊` ボタン (`.ono-play`, 44×44 タップターゲット) を配置。Web Speech API (`speechSynthesis` + `SpeechSynthesisUtterance`) でブラウザ標準 TTS を呼び出し、`data-play-lang` (ja/en/ko/zh) を `PLAY_LANG_MAP` で BCP-47 タグ (`ja-JP`/`en-US`/`ko-KR`/`zh-CN`) にマップして再生。`utter.rate = 0.9` で少し遅め。`speechSynthesis` 非対応環境では JS 起動時に `html.no-tts` を付与し CSS でボタンを非表示。連続クリック・新規発話の前に `speechSynthesis.cancel()` を呼んで多重再生を防ぎ、`beforeunload` でも `cancel()` してページ遷移時の続行再生を防ぐ。再生中は対象ボタンに `.playing` クラスを付与 (背景アクセント色)、`onend`/`onerror` で解除。aria-label は表示言語に応じて `updatePlayLabels(code)` が再生成 (例: `日本語の発音を再生` / `Play Japanese pronunciation` / `일본어 발음 재생` / `播放日语发音`、`PLAY_LABELS` × `LANG_NAMES_LOCALIZED` の組み合わせで 4×4 = 16 通り)。初期 HTML の aria-label は日本語名 (`LANG_LABELS_JA`: 英語/韓国語/中国語) で出力し、no-JS でも自然な日本語読み上げになるようにしている。発音精度は OS/ブラウザ音声エンジン依存で、辞書にないオノマトペ (「ニャー」「woof」等) は綴り通り読まれることがある (期待値として割り切る)
+- オノマトペ発音再生 (種ページ): 各オノマトペセル (`.ono-cell`) に `🔊` ボタン (`.ono-play`, 44×44 タップターゲット) を配置。Web Speech API (`speechSynthesis` + `SpeechSynthesisUtterance`) でブラウザ標準 TTS を呼び出し、`data-play-lang` (ja/en/ko/zh) を `PLAY_LANG_MAP` で BCP-47 タグ (`ja-JP`/`en-US`/`ko-KR`/`zh-CN`) にマップして再生。`utter.rate = 0.9` で少し遅め。`speechSynthesis` 非対応環境では JS 起動時に `html.no-tts` を付与し CSS でボタンを非表示。連続クリック・新規発話の前に `speechSynthesis.cancel()` を呼んで多重再生を防ぎ、`beforeunload` でも `cancel()` してページ遷移時の続行再生を防ぐ。再生中は対象ボタンに `.playing` クラスを付与 (背景アクセント色)、`onend`/`onerror` で解除。aria-label は表示言語に応じて `updatePlayLabels(code)` が再生成 (例: `日本語の発音を再生` / `Play Japanese pronunciation` / `일본어 발음 재생` / `播放日语发音`、`PLAY_LABELS` × `LANG_NAMES_LOCALIZED` の組み合わせで 4×4 = 16 通り)。初期 HTML の aria-label は日本語名 (`LANG_LABELS_JA`: 英語/韓国語/中国語) で出力し、no-JS でも自然な日本語読み上げになるようにしている
 
 ### コンテンツ差別化設計 (カード / モーダル / 種ページ)
 
@@ -244,7 +244,7 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
   - 種ページ: `@type: Article` (headline / description / url / publisher)。文字列は `_json_for_script()` で `<`/`>`/`&` を `\u003c` 等にエスケープ済み
 - サイトマップ: `dist/sitemap.xml` はトップページ 1 URL のみ。種ページは内部リンク (モーダル → 種ページ + 関連種) で発見可能だがサイトマップ非掲載
   - 理由: 種ページは「クロール済み - インデックス未登録」が大量発生したため除外 (コミット `8f76bf3` の方針)
-- meta description / OGP / Twitter Card は両ページに設定。og:locale は初期 HTML が `ja_JP`、JS が選択言語に応じて `ja_JP` / `en_US` / `ko_KR` / `zh_CN` に書き換え (Bot は初期 HTML を参照するため SEO 影響は限定的)
+- meta description / OGP / Twitter Card は両ページに設定。og:locale は初期 HTML が `ja_JP`、JS が選択言語に応じて `ja_JP` / `en_US` / `ko_KR` / `zh_CN` に書き換え
 
 ### アクセシビリティ
 
@@ -334,8 +334,3 @@ node --test tests/test_frontend.mjs
 # Python テスト + カバレッジ
 python3 -m pytest tests/test_build.py --cov=scripts --cov-report=term-missing
 ```
-
-## 今後の拡張候補
-
-- 第5言語以降の追加（オノマトペマッピングに行を追加するだけで対応可能）
-- Fuse.js のローカルバンドル（PWA オフライン完全対応）
