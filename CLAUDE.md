@@ -7,54 +7,55 @@
 
 ## ディレクトリ構成
 
-```
-koe-zukan/
-├── CLAUDE.md              ← このファイル
-├── .github/
-│   ├── FUNDING.yml        ← GitHub Sponsors
-│   ├── tests/
-│   │   └── workflow-checks-test.sh ← workflow-checks.yml を偽の gh とフィクスチャの git tree で実行するテスト
-│   └── workflows/
-│       ├── deploy.yml     ← GitHub Pages デプロイ (Python 3.12 + openpyxl + Pillow)
-│       ├── workflow-checks.yml ← 全 PR で uses: の SHA 固定と同一リポジトリ参照の規則を検査
-│       └── workflow-checks-test.yml ← 検査のフィクスチャテストを実行
-├── data/
-│   ├── animal-sounds-data.xlsx  ← マスターデータ（唯一の真のソース）
-│   └── no-audio.json      ← Macaulay Library 音声なしリスト (check_audio.py で生成)
-├── scripts/
-│   ├── build.py           ← Excel → dist/ 変換スクリプト (メイン)
-│   ├── add_species.py     ← 種の一括追加スクリプト
-│   ├── add_kanji_names.py ← 漢字名の一括追加スクリプト
-│   ├── add_ko_zh_onomatopoeia.py ← 韓国語・中国語オノマトペ一括追加
-│   ├── fetch_taxon_codes.py ← ML taxonCode 取得スクリプト
-│   └── check_audio.py     ← ML 音声有無チェック → no-audio.json 生成
-├── assets/
-│   └── favicon.svg        ← 猫シルエット (紫グラデーション, 左右対称)
-├── templates/
-│   ├── index.html         ← メインページテンプレート（プレースホルダー: {{SITE_URL}}, {{SPECIES_COUNT}} 等）
-│   └── species.html       ← 個別種ページテンプレート（SEO 用、JSON-LD 構造化データ）
-├── tests/
-│   ├── test_build.py      ← build.py ユニットテスト (pytest)
-│   └── test_frontend.mjs  ← フロントエンドロジックテスト (node --test)
-├── docs/
-│   ├── verification-report.md   ← ソフトウェア検証レポート (V### 形式の指摘 + 監査ラウンド追記)
-│   ├── ux-audit-report.md       ← UI/UX 監査レポート (WCAG 2.1 AA / 2.2 AA 適合確認)
-│   └── quality-audit-report.md  ← 品質監査レポート (契約/構文/ピクセル検査)
-└── dist/                  ← ビルド出力（GitHub Pages デプロイ対象、gitignore）
-    ├── index.html         ← テンプレートから生成（プレースホルダー置換済み）
-    ├── animals.json
-    ├── regions.json
-    ├── sitemap.xml        ← Google 用サイトマップ (トップページのみ)
-    ├── ogp.png            ← トップページ OGP 画像 (1200x630, Pillow で動的生成)
-    ├── icon-192.png       ← PWA アイコン 192x192 (Pillow 動的生成, maskable)
-    ├── icon-512.png       ← PWA アイコン 512x512 (Pillow 動的生成, maskable)
-    ├── manifest.json      ← PWA マニフェスト
-    ├── sw.js              ← Service Worker (キャッシュファースト)
-    ├── favicon.svg
-    ├── CNAME              ← GitHub Pages カスタムドメイン
-    └── species/{ID}/      ← 個別種ページ (1 種 1 ディレクトリ)
-        ├── index.html     ← 種ページ HTML (JSON-LD, OGP, 共有ボタン, hreflang)
-        └── ogp.png        ← 種別 OGP 画像 (オノマトペ 4 言語表示)
+```mermaid
+graph LR
+  root["koe-zukan/"]
+  root --> claudemd["CLAUDE.md<br>このファイル"]
+  root --> github[".github/"]
+  github --> funding["FUNDING.yml<br>GitHub Sponsors"]
+  github --> ghtests["tests/"]
+  ghtests --> wfcheckstestsh["workflow-checks-test.sh<br>workflow-checks.yml を偽の gh とフィクスチャの git tree で実行するテスト"]
+  github --> workflows["workflows/"]
+  workflows --> deployyml["deploy.yml<br>GitHub Pages デプロイ (Python 3.12 + openpyxl + Pillow)"]
+  workflows --> wfchecksyml["workflow-checks.yml<br>全 PR で uses: の SHA 固定と同一リポジトリ参照の規則を検査"]
+  workflows --> wfcheckstestyml["workflow-checks-test.yml<br>検査のフィクスチャテストを実行"]
+  root --> data["data/"]
+  data --> xlsx["animal-sounds-data.xlsx<br>マスターデータ（唯一の真のソース）"]
+  data --> noaudio["no-audio.json<br>Macaulay Library 音声なしリスト (check_audio.py で生成)"]
+  root --> scripts["scripts/"]
+  scripts --> buildpy["build.py<br>Excel から dist/ への変換スクリプト (メイン)"]
+  scripts --> addspecies["add_species.py<br>種の一括追加スクリプト"]
+  scripts --> addkanji["add_kanji_names.py<br>漢字名の一括追加スクリプト"]
+  scripts --> addkozh["add_ko_zh_onomatopoeia.py<br>韓国語・中国語オノマトペ一括追加"]
+  scripts --> fetchtaxon["fetch_taxon_codes.py<br>ML taxonCode 取得スクリプト"]
+  scripts --> checkaudio["check_audio.py<br>ML 音声有無チェックから no-audio.json を生成"]
+  root --> assets["assets/"]
+  assets --> faviconsrc["favicon.svg<br>猫シルエット (紫グラデーション, 左右対称)"]
+  root --> templates["templates/"]
+  templates --> indextpl["index.html<br>メインページテンプレート（プレースホルダー: {{SITE_URL}}, {{SPECIES_COUNT}} 等）"]
+  templates --> speciestpl["species.html<br>個別種ページテンプレート（SEO 用、JSON-LD 構造化データ）"]
+  root --> tests["tests/"]
+  tests --> testbuild["test_build.py<br>build.py ユニットテスト (pytest)"]
+  tests --> testfrontend["test_frontend.mjs<br>フロントエンドロジックテスト (node --test)"]
+  root --> docs["docs/"]
+  docs --> verification["verification-report.md<br>ソフトウェア検証レポート (V### 形式の指摘 + 監査ラウンド追記)"]
+  docs --> uxaudit["ux-audit-report.md<br>UI/UX 監査レポート (WCAG 2.1 AA / 2.2 AA 適合確認)"]
+  docs --> qualityaudit["quality-audit-report.md<br>品質監査レポート (契約/構文/ピクセル検査)"]
+  root --> dist["dist/<br>ビルド出力（GitHub Pages デプロイ対象、gitignore）"]
+  dist --> distindex["index.html<br>テンプレートから生成（プレースホルダー置換済み）"]
+  dist --> animalsjson["animals.json"]
+  dist --> regionsjson["regions.json"]
+  dist --> sitemap["sitemap.xml<br>Google 用サイトマップ (トップページのみ)"]
+  dist --> ogp["ogp.png<br>トップページ OGP 画像 (1200x630, Pillow で動的生成)"]
+  dist --> icon192["icon-192.png<br>PWA アイコン 192x192 (Pillow 動的生成, maskable)"]
+  dist --> icon512["icon-512.png<br>PWA アイコン 512x512 (Pillow 動的生成, maskable)"]
+  dist --> manifest["manifest.json<br>PWA マニフェスト"]
+  dist --> swjs["sw.js<br>Service Worker (キャッシュファースト)"]
+  dist --> distfavicon["favicon.svg"]
+  dist --> cname["CNAME<br>GitHub Pages カスタムドメイン"]
+  dist --> speciesdir["species/{ID}/<br>個別種ページ (1 種 1 ディレクトリ)"]
+  speciesdir --> speciesindex["index.html<br>種ページ HTML (JSON-LD, OGP, 共有ボタン, hreflang)"]
+  speciesdir --> speciesogp["ogp.png<br>種別 OGP 画像 (オノマトペ 4 言語表示)"]
 ```
 
 ## ビルド
