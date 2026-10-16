@@ -60,8 +60,8 @@ koe-zukan/
 ## ビルド
 
 ```bash
-pip install openpyxl Pillow
-python scripts/build.py
+pip3 install --user --break-system-packages openpyxl Pillow
+python3 scripts/build.py
 ```
 
 `data/animal-sounds-data.xlsx` を読み込み、`dist/` に静的サイトを出力する。
@@ -118,7 +118,7 @@ python scripts/build.py
 
 ## デプロイ
 
-GitHub Actions (`.github/workflows/deploy.yml`) が master push 時に自動デプロイ。
+GitHub Actions (`.github/workflows/deploy.yml`) が master push 時に自動デプロイ。CI は setup-python 3.12 上で `pip install` / `python -m pytest` / `python scripts/build.py` を実行する (「ビルド」「テスト」節のローカル手順の `pip3` / `python3` とは別)。
 GitHub Pages → カスタムドメイン `koe-zukan.semnil.com` (Route 53 CNAME → `semnil.github.io`)。
 
 ## Excel シート構成（7シート）
@@ -317,19 +317,21 @@ Fuse.jsインデックスに含まれるフィールドと重み:
 - マスターデータは `data/animal-sounds-data.xlsx` のみ。`dist/` 内のJSONを直接編集しない
 - 種を追加する際は全関連シート（メインデータ、名称マッピング、オノマトペマッピング、地域マッピング）に整合的に追加すること
 - IDは各カテゴリの連番を維持する（欠番は埋めない）
-- 編集後は `python scripts/build.py` で再ビルドする
+- 編集後は `python3 scripts/build.py` で再ビルドする
 
 ## テスト
 
 ```bash
+pip3 install --user --break-system-packages pytest pytest-cov
+
 # Python テスト (build.py)
-python -m pytest tests/test_build.py -v
+python3 -m pytest tests/test_build.py -v
 
 # JavaScript テスト (フロントエンドロジック)
 node --test tests/test_frontend.mjs
 
 # Python テスト + カバレッジ
-python -m pytest tests/test_build.py --cov=scripts --cov-report=term-missing
+python3 -m pytest tests/test_build.py --cov=scripts --cov-report=term-missing
 ```
 
 ## 今後の拡張候補
