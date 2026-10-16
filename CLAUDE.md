@@ -3,7 +3,7 @@
 多言語対応の動物オノマトペ検索サイト。Excelマスターデータから静的サイトを生成し、GitHub Pages でホスティングする。
 
 - サイト URL: https://koe-zukan.semnil.com
-- リポジトリ: https://github.com/semnil/koe-zukan (private)
+- リポジトリ: https://github.com/semnil/koe-zukan (public)
 
 ## ディレクトリ構成
 
@@ -37,9 +37,9 @@ koe-zukan/
 │   ├── test_build.py      ← build.py ユニットテスト (pytest)
 │   └── test_frontend.mjs  ← フロントエンドロジックテスト (node --test)
 ├── docs/
-│   ├── verification-report.md   ← ソフトウェア検証レポート (V001-V012 + V013 以降の監査ラウンド追記)
-│   ├── ux-audit-report.md       ← UI/UX 監査レポート (ラウンド 1-3、WCAG 2.1 AA / 2.2 AA 適合確認)
-│   └── quality-audit-report.md  ← 品質監査レポート (ラウンド 1-3、契約/構文/ピクセル検査)
+│   ├── verification-report.md   ← ソフトウェア検証レポート (V### 形式の指摘 + 監査ラウンド追記)
+│   ├── ux-audit-report.md       ← UI/UX 監査レポート (WCAG 2.1 AA / 2.2 AA 適合確認)
+│   └── quality-audit-report.md  ← 品質監査レポート (契約/構文/ピクセル検査)
 └── dist/                  ← ビルド出力（GitHub Pages デプロイ対象、gitignore）
     ├── index.html         ← テンプレートから生成（プレースホルダー置換済み）
     ├── animals.json
@@ -52,7 +52,7 @@ koe-zukan/
     ├── sw.js              ← Service Worker (キャッシュファースト)
     ├── favicon.svg
     ├── CNAME              ← GitHub Pages カスタムドメイン
-    └── species/{ID}/      ← 個別種ページ (305 ディレクトリ)
+    └── species/{ID}/      ← 個別種ページ (1 種 1 ディレクトリ)
         ├── index.html     ← 種ページ HTML (JSON-LD, OGP, 共有ボタン, hreflang)
         └── ogp.png        ← 種別 OGP 画像 (オノマトペ 4 言語表示)
 ```
@@ -70,7 +70,7 @@ python3 scripts/build.py
 
 - `animals.json`, `regions.json` — Excel から変換した JSON データ
 - `index.html` — テンプレートからプレースホルダーを置換して生成
-- `species/{ID}/index.html` — 個別種ページ (305 ページ、JSON-LD + OGP + 共有ボタン + hreflang 5 本)
+- `species/{ID}/index.html` — 個別種ページ (JSON-LD + OGP + 共有ボタン + hreflang 5 本)
 - `species/{ID}/ogp.png` — 種別 OGP 画像 (オノマトペ 4 言語表示、CJK 言語別フォント)
 - `sitemap.xml` — トップページのみ (種ページはインデックス効率のため除外)
 - `ogp.png` — トップページ OGP 画像 (Pillow で動的生成、種数・言語数を反映)
@@ -125,12 +125,12 @@ GitHub Pages → カスタムドメイン `koe-zukan.semnil.com` (Route 53 CNAME
 
 | シート | 内容 | 主キー |
 |---|---|---|
-| メインデータ | 305種の基本情報（15列、O列=taxonCode） | ID |
+| メインデータ | 種ごとの基本情報（15列、O列=taxonCode） | ID |
 | 名称マッピング | 和名・学名・英名・別名・漢字名 | ID |
 | 分類マッピング | 門/綱/目/科の多言語名称 | (分類レベル, 和名) |
 | オノマトペマッピング | 4言語のオノマトペ+場面 | (ID, 言語コード) |
 | 凡例・定義 | IUCN区分・発声方法等の定義 | — |
-| 地域マスター | 26地域の正規化マスター | 地域ID |
+| 地域マスター | 地域の正規化マスター | 地域ID |
 | 地域マッピング | 動物×地域の多対多マッピング | (ID, 地域ID) |
 
 ### メインデータ列（A〜O）
@@ -139,14 +139,14 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
 
 ### ID体系
 
-- A: 初期サンプル（A001〜A005）
-- B: 鳥類（B001〜B122、B002欠番）
-- M: 哺乳類（M001〜M081）
-- I: 昆虫（I001〜I044）
-- F: 両生類（F001〜F033）
-- R: 爬虫類（R001〜R020）
-- S: 魚類（S001〜S018）
-- V: 無脊椎動物（V001〜V012）
+- A: 初期サンプル
+- B: 鳥類
+- M: 哺乳類
+- I: 昆虫
+- F: 両生類
+- R: 爬虫類
+- S: 魚類
+- V: 無脊椎動物
 
 ### 言語コード
 
@@ -167,7 +167,7 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
 - データ: ビルド時にExcel→JSON変換、ページロード時にfetchしてインメモリ検索
 - レスポンシブ対応（モバイル含む）
 - OGP / Twitter Card 対応（トップページ + 個別種ページ、CJK 言語別フォント）
-- 個別種ページ: `/species/{ID}/` (305 ページ、JSON-LD 構造化データ、canonical URL、hreflang ja/en/ko/zh/x-default は自身の `/species/{ID}/?lang=*` を指す)
+- 個別種ページ: `/species/{ID}/` (JSON-LD 構造化データ、canonical URL、hreflang ja/en/ko/zh/x-default は自身の `/species/{ID}/?lang=*` を指す)
 - 共有ボタン: X (Twitter), Facebook, LINE, URLコピー（種ページのみ。各 aria-label とコピーフィードバックは表示言語に追従）
 - PWA 対応: manifest.json + Service Worker (キャッシュファースト、192/512 PNG アイコン maskable)
 - URL パラメータ `?id=` でカード直接リンク、`?q=` で初期検索クエリ (`WebSite` JSON-LD の SearchAction `urlTemplate` 契約)
@@ -182,9 +182,9 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
 | 名前 | 和名 or 表示言語 | 表示言語 | 和名 + 英名 + 学名 |
 | 綱/目/科 タグ | 綱のみ (アイコン付き) | 綱のみ | 綱/目/科 全階層 |
 | オノマトペ | 表示言語 main のみ | 表示言語 (場面なし) | 4 言語 + 場面 + 発音再生ボタン |
-| 外部リンク | なし | なし | あり (Wikipedia / xeno-canto / ML) |
+| 外部リンク | なし | なし | あり (Wikimedia Commons / Wikipedia / xeno-canto / ML) |
 | 共有ボタン | なし | なし | あり (X/Facebook/LINE/URLコピー) |
-| 保全状況 | — | コードのみ | コード + 日本語ラベル |
+| 保全状況 | — | コードのみ | コード + 表示言語のラベル |
 | 関連種 | なし | なし | あり |
 | 詳細リンク | あり (モーダル内) | あり (「詳細ページで見る →」) | — (自ページ) |
 
@@ -195,7 +195,7 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
 - `MODAL_LABELS` — モーダル内ラベル (ono / info / voiceMethod / conservation / regions) 4 言語
 - `MODAL_HINT` / `CLOSE_LABEL` — モーダル操作ヒント 4 言語
 - `DETAIL_LINK_LABEL` — モーダル内「詳細ページで見る →」のテキスト 4 言語
-- `VOICE_METHOD_EN` — 発声方法の日本語→英語マップ (27 エントリ。`scripts/build.py` の同名定数とミラー)
+- `VOICE_METHOD_EN` — 発声方法の日本語→英語マップ (`scripts/build.py` の同名定数とミラー)
 - `ALL_LABEL` — フィルタ「すべて」4 言語
 - `SEARCH_LABELS` — 検索ボックス全要素 (label / placeholder / hint / clear / filters / langTabs / noResults / loading / loadError) 4 言語
 - `getDisplayName(a)` — `displayLang` に応じた名前返却
@@ -238,9 +238,9 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
   - トップページ: `<link rel="canonical" href="https://koe-zukan.semnil.com/">` — `?lang=` / `?id=` / `?q=` の各バリエーションを `/` に正規化
   - 種ページ: `<link rel="canonical" href=".../species/{ID}/">` — `?lang=` 付き URL を正規化
 - 構造化データ (JSON-LD):
-  - トップページ: `@type: WebSite` (name / alternateName / url / description / `inLanguage: [ja, en, ko, zh]` / `potentialAction: SearchAction`)。Google の Sitelinks Search Box 対象
+  - トップページ: `@type: WebSite` (name / alternateName / url / description / `inLanguage: [ja, en, ko, zh]` / `potentialAction: SearchAction`)
   - SearchAction の `urlTemplate` は `https://koe-zukan.semnil.com/?q={search_term_string}` で、index.html の JS が `?q=` を受けて検索ボックスに投入 + `onSearch()` を実行
-  - 種ページ: `@type: Article` (headline / description / url / publisher)。文字列は `_json_for_script()` で `<`/`>`/`&` を `<` 等にエスケープ済み
+  - 種ページ: `@type: Article` (headline / description / url / publisher)。文字列は `_json_for_script()` で `<`/`>`/`&` を `\u003c` 等にエスケープ済み
 - サイトマップ: `dist/sitemap.xml` はトップページ 1 URL のみ。種ページは内部リンク (モーダル → 種ページ + 関連種) で発見可能だがサイトマップ非掲載
   - 理由: 種ページは「クロール済み - インデックス未登録」が大量発生したため除外 (コミット `8f76bf3` の方針)
 - meta description / OGP / Twitter Card は両ページに設定。og:locale は初期 HTML が `ja_JP`、JS が選択言語に応じて `ja_JP` / `en_US` / `ko_KR` / `zh_CN` に書き換え (Bot は初期 HTML を参照するため SEO 影響は限定的)
