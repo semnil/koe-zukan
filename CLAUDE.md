@@ -3,65 +3,66 @@
 多言語対応の動物オノマトペ検索サイト。Excelマスターデータから静的サイトを生成し、GitHub Pages でホスティングする。
 
 - サイト URL: https://koe-zukan.semnil.com
-- リポジトリ: https://github.com/semnil/koe-zukan (private)
+- リポジトリ: https://github.com/semnil/koe-zukan (public)
 
 ## ディレクトリ構成
 
-```
-koe-zukan/
-├── CLAUDE.md              ← このファイル
-├── .github/
-│   ├── FUNDING.yml        ← GitHub Sponsors
-│   ├── tests/
-│   │   └── workflow-checks-test.sh ← workflow-checks.yml を偽の gh とフィクスチャの git tree で実行するテスト
-│   └── workflows/
-│       ├── deploy.yml     ← GitHub Pages デプロイ (Python 3.12 + openpyxl + Pillow)
-│       ├── workflow-checks.yml ← 全 PR で uses: の SHA 固定と同一リポジトリ参照の規則を検査
-│       └── workflow-checks-test.yml ← 検査のフィクスチャテストを実行
-├── data/
-│   ├── animal-sounds-data.xlsx  ← マスターデータ（唯一の真のソース）
-│   └── no-audio.json      ← Macaulay Library 音声なしリスト (check_audio.py で生成)
-├── scripts/
-│   ├── build.py           ← Excel → dist/ 変換スクリプト (メイン)
-│   ├── add_species.py     ← 種の一括追加スクリプト
-│   ├── add_kanji_names.py ← 漢字名の一括追加スクリプト
-│   ├── add_ko_zh_onomatopoeia.py ← 韓国語・中国語オノマトペ一括追加
-│   ├── fetch_taxon_codes.py ← ML taxonCode 取得スクリプト
-│   └── check_audio.py     ← ML 音声有無チェック → no-audio.json 生成
-├── assets/
-│   └── favicon.svg        ← 猫シルエット (紫グラデーション, 左右対称)
-├── templates/
-│   ├── index.html         ← メインページテンプレート（プレースホルダー: {{SITE_URL}}, {{SPECIES_COUNT}} 等）
-│   └── species.html       ← 個別種ページテンプレート（SEO 用、JSON-LD 構造化データ）
-├── tests/
-│   ├── test_build.py      ← build.py ユニットテスト (pytest)
-│   └── test_frontend.mjs  ← フロントエンドロジックテスト (node --test)
-├── docs/
-│   ├── verification-report.md   ← ソフトウェア検証レポート (V001-V012 + V013 以降の監査ラウンド追記)
-│   ├── ux-audit-report.md       ← UI/UX 監査レポート (ラウンド 1-3、WCAG 2.1 AA / 2.2 AA 適合確認)
-│   └── quality-audit-report.md  ← 品質監査レポート (ラウンド 1-3、契約/構文/ピクセル検査)
-└── dist/                  ← ビルド出力（GitHub Pages デプロイ対象、gitignore）
-    ├── index.html         ← テンプレートから生成（プレースホルダー置換済み）
-    ├── animals.json
-    ├── regions.json
-    ├── sitemap.xml        ← Google 用サイトマップ (トップページのみ)
-    ├── ogp.png            ← トップページ OGP 画像 (1200x630, Pillow で動的生成)
-    ├── icon-192.png       ← PWA アイコン 192x192 (Pillow 動的生成, maskable)
-    ├── icon-512.png       ← PWA アイコン 512x512 (Pillow 動的生成, maskable)
-    ├── manifest.json      ← PWA マニフェスト
-    ├── sw.js              ← Service Worker (キャッシュファースト)
-    ├── favicon.svg
-    ├── CNAME              ← GitHub Pages カスタムドメイン
-    └── species/{ID}/      ← 個別種ページ (305 ディレクトリ)
-        ├── index.html     ← 種ページ HTML (JSON-LD, OGP, 共有ボタン, hreflang)
-        └── ogp.png        ← 種別 OGP 画像 (オノマトペ 4 言語表示)
+```mermaid
+graph LR
+  root["koe-zukan/"]
+  root --> claudemd["CLAUDE.md<br>このファイル"]
+  root --> github[".github/"]
+  github --> funding["FUNDING.yml<br>GitHub Sponsors"]
+  github --> ghtests["tests/"]
+  ghtests --> wfcheckstestsh["workflow-checks-test.sh<br>workflow-checks.yml を偽の gh とフィクスチャの git tree で実行するテスト"]
+  github --> workflows["workflows/"]
+  workflows --> deployyml["deploy.yml<br>GitHub Pages デプロイ (Python 3.12 + openpyxl + Pillow)"]
+  workflows --> wfchecksyml["workflow-checks.yml<br>全 PR で uses: の SHA 固定と同一リポジトリ参照の規則を検査"]
+  workflows --> wfcheckstestyml["workflow-checks-test.yml<br>検査のフィクスチャテストを実行"]
+  root --> data["data/"]
+  data --> xlsx["animal-sounds-data.xlsx<br>マスターデータ（唯一の真のソース）"]
+  data --> noaudio["no-audio.json<br>Macaulay Library 音声なしリスト (check_audio.py で生成)"]
+  root --> scripts["scripts/"]
+  scripts --> buildpy["build.py<br>Excel から dist/ への変換スクリプト (メイン)"]
+  scripts --> addspecies["add_species.py<br>種の一括追加スクリプト"]
+  scripts --> addkanji["add_kanji_names.py<br>漢字名の一括追加スクリプト"]
+  scripts --> addkozh["add_ko_zh_onomatopoeia.py<br>韓国語・中国語オノマトペ一括追加"]
+  scripts --> fetchtaxon["fetch_taxon_codes.py<br>ML taxonCode 取得スクリプト"]
+  scripts --> checkaudio["check_audio.py<br>ML 音声有無チェックから no-audio.json を生成"]
+  root --> assets["assets/"]
+  assets --> faviconsrc["favicon.svg<br>猫シルエット (紫グラデーション, 左右対称)"]
+  root --> templates["templates/"]
+  templates --> indextpl["index.html<br>メインページテンプレート（プレースホルダー: {{SITE_URL}}, {{SPECIES_COUNT}} 等）"]
+  templates --> speciestpl["species.html<br>個別種ページテンプレート（SEO 用、JSON-LD 構造化データ）"]
+  root --> tests["tests/"]
+  tests --> testbuild["test_build.py<br>build.py ユニットテスト (pytest)"]
+  tests --> testfrontend["test_frontend.mjs<br>フロントエンドロジックテスト (node --test)"]
+  root --> docs["docs/"]
+  docs --> verification["verification-report.md<br>ソフトウェア検証レポート (V### 形式の指摘 + 監査ラウンド追記)"]
+  docs --> uxaudit["ux-audit-report.md<br>UI/UX 監査レポート (WCAG 2.1 AA / 2.2 AA 適合確認)"]
+  docs --> qualityaudit["quality-audit-report.md<br>品質監査レポート (契約/構文/ピクセル検査)"]
+  root --> dist["dist/<br>ビルド出力（GitHub Pages デプロイ対象、gitignore）"]
+  dist --> distindex["index.html<br>テンプレートから生成（プレースホルダー置換済み）"]
+  dist --> animalsjson["animals.json"]
+  dist --> regionsjson["regions.json"]
+  dist --> sitemap["sitemap.xml<br>Google 用サイトマップ (トップページのみ)"]
+  dist --> ogp["ogp.png<br>トップページ OGP 画像 (1200x630, Pillow で動的生成)"]
+  dist --> icon192["icon-192.png<br>PWA アイコン 192x192 (Pillow 動的生成, maskable)"]
+  dist --> icon512["icon-512.png<br>PWA アイコン 512x512 (Pillow 動的生成, maskable)"]
+  dist --> manifest["manifest.json<br>PWA マニフェスト"]
+  dist --> swjs["sw.js<br>Service Worker (キャッシュファースト)"]
+  dist --> distfavicon["favicon.svg"]
+  dist --> cname["CNAME<br>GitHub Pages カスタムドメイン"]
+  dist --> speciesdir["species/{ID}/<br>個別種ページ (1 種 1 ディレクトリ)"]
+  speciesdir --> speciesindex["index.html<br>種ページ HTML (JSON-LD, OGP, 共有ボタン, hreflang)"]
+  speciesdir --> speciesogp["ogp.png<br>種別 OGP 画像 (オノマトペ 4 言語表示)"]
 ```
 
 ## ビルド
 
 ```bash
-pip install openpyxl Pillow
-python scripts/build.py
+pip3 install --user --break-system-packages openpyxl Pillow
+python3 scripts/build.py
 ```
 
 `data/animal-sounds-data.xlsx` を読み込み、`dist/` に静的サイトを出力する。
@@ -70,7 +71,7 @@ python scripts/build.py
 
 - `animals.json`, `regions.json` — Excel から変換した JSON データ
 - `index.html` — テンプレートからプレースホルダーを置換して生成
-- `species/{ID}/index.html` — 個別種ページ (305 ページ、JSON-LD + OGP + 共有ボタン + hreflang 5 本)
+- `species/{ID}/index.html` — 個別種ページ (JSON-LD + OGP + 共有ボタン + hreflang 5 本)
 - `species/{ID}/ogp.png` — 種別 OGP 画像 (オノマトペ 4 言語表示、CJK 言語別フォント)
 - `sitemap.xml` — トップページのみ (種ページはインデックス効率のため除外)
 - `ogp.png` — トップページ OGP 画像 (Pillow で動的生成、種数・言語数を反映)
@@ -118,19 +119,19 @@ python scripts/build.py
 
 ## デプロイ
 
-GitHub Actions (`.github/workflows/deploy.yml`) が master push 時に自動デプロイ。
+GitHub Actions (`.github/workflows/deploy.yml`) が master push 時に自動デプロイ。CI は setup-python 3.12 上で `pip install` / `python -m pytest` / `python scripts/build.py` を実行する (「ビルド」「テスト」節のローカル手順の `pip3` / `python3` とは別)。
 GitHub Pages → カスタムドメイン `koe-zukan.semnil.com` (Route 53 CNAME → `semnil.github.io`)。
 
 ## Excel シート構成（7シート）
 
 | シート | 内容 | 主キー |
 |---|---|---|
-| メインデータ | 305種の基本情報（15列、O列=taxonCode） | ID |
+| メインデータ | 種ごとの基本情報（15列、O列=taxonCode） | ID |
 | 名称マッピング | 和名・学名・英名・別名・漢字名 | ID |
 | 分類マッピング | 門/綱/目/科の多言語名称 | (分類レベル, 和名) |
 | オノマトペマッピング | 4言語のオノマトペ+場面 | (ID, 言語コード) |
 | 凡例・定義 | IUCN区分・発声方法等の定義 | — |
-| 地域マスター | 26地域の正規化マスター | 地域ID |
+| 地域マスター | 地域の正規化マスター | 地域ID |
 | 地域マッピング | 動物×地域の多対多マッピング | (ID, 地域ID) |
 
 ### メインデータ列（A〜O）
@@ -139,14 +140,14 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
 
 ### ID体系
 
-- A: 初期サンプル（A001〜A005）
-- B: 鳥類（B001〜B122、B002欠番）
-- M: 哺乳類（M001〜M081）
-- I: 昆虫（I001〜I044）
-- F: 両生類（F001〜F033）
-- R: 爬虫類（R001〜R020）
-- S: 魚類（S001〜S018）
-- V: 無脊椎動物（V001〜V012）
+- A: 初期サンプル
+- B: 鳥類
+- M: 哺乳類
+- I: 昆虫
+- F: 両生類
+- R: 爬虫類
+- S: 魚類
+- V: 無脊椎動物
 
 ### 言語コード
 
@@ -167,13 +168,13 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
 - データ: ビルド時にExcel→JSON変換、ページロード時にfetchしてインメモリ検索
 - レスポンシブ対応（モバイル含む）
 - OGP / Twitter Card 対応（トップページ + 個別種ページ、CJK 言語別フォント）
-- 個別種ページ: `/species/{ID}/` (305 ページ、JSON-LD 構造化データ、canonical URL、hreflang ja/en/ko/zh/x-default は自身の `/species/{ID}/?lang=*` を指す)
+- 個別種ページ: `/species/{ID}/` (JSON-LD 構造化データ、canonical URL、hreflang ja/en/ko/zh/x-default は自身の `/species/{ID}/?lang=*` を指す)
 - 共有ボタン: X (Twitter), Facebook, LINE, URLコピー（種ページのみ。各 aria-label とコピーフィードバックは表示言語に追従）
 - PWA 対応: manifest.json + Service Worker (キャッシュファースト、192/512 PNG アイコン maskable)
 - URL パラメータ `?id=` でカード直接リンク、`?q=` で初期検索クエリ (`WebSite` JSON-LD の SearchAction `urlTemplate` 契約)
 - Google Search Console 連携 (サイトマップ + 所有権確認メタタグ)
 - 関連種リンク: 種ページに「同じ仲間の動物」セクション (family→order→class→phylum の 4 段フォールバック、最大 4 件) — SEO 内部リンク強化
-- オノマトペ発音再生 (種ページ): 各オノマトペセル (`.ono-cell`) に `🔊` ボタン (`.ono-play`, 44×44 タップターゲット) を配置。Web Speech API (`speechSynthesis` + `SpeechSynthesisUtterance`) でブラウザ標準 TTS を呼び出し、`data-play-lang` (ja/en/ko/zh) を `PLAY_LANG_MAP` で BCP-47 タグ (`ja-JP`/`en-US`/`ko-KR`/`zh-CN`) にマップして再生。`utter.rate = 0.9` で少し遅め。`speechSynthesis` 非対応環境では JS 起動時に `html.no-tts` を付与し CSS でボタンを非表示。連続クリック・新規発話の前に `speechSynthesis.cancel()` を呼んで多重再生を防ぎ、`beforeunload` でも `cancel()` してページ遷移時の続行再生を防ぐ。再生中は対象ボタンに `.playing` クラスを付与 (背景アクセント色)、`onend`/`onerror` で解除。aria-label は表示言語に応じて `updatePlayLabels(code)` が再生成 (例: `日本語の発音を再生` / `Play Japanese pronunciation` / `일본어 발음 재생` / `播放日语发音`、`PLAY_LABELS` × `LANG_NAMES_LOCALIZED` の組み合わせで 4×4 = 16 通り)。初期 HTML の aria-label は日本語名 (`LANG_LABELS_JA`: 英語/韓国語/中国語) で出力し、no-JS でも自然な日本語読み上げになるようにしている。発音精度は OS/ブラウザ音声エンジン依存で、辞書にないオノマトペ (「ニャー」「woof」等) は綴り通り読まれることがある (期待値として割り切る)
+- オノマトペ発音再生 (種ページ): 各オノマトペセル (`.ono-cell`) に `🔊` ボタン (`.ono-play`, 44×44 タップターゲット) を配置。Web Speech API (`speechSynthesis` + `SpeechSynthesisUtterance`) でブラウザ標準 TTS を呼び出し、`data-play-lang` (ja/en/ko/zh) を `PLAY_LANG_MAP` で BCP-47 タグ (`ja-JP`/`en-US`/`ko-KR`/`zh-CN`) にマップして再生。`utter.rate = 0.9` で少し遅め。`speechSynthesis` 非対応環境では JS 起動時に `html.no-tts` を付与し CSS でボタンを非表示。連続クリック・新規発話の前に `speechSynthesis.cancel()` を呼んで多重再生を防ぎ、`beforeunload` でも `cancel()` してページ遷移時の続行再生を防ぐ。再生中は対象ボタンに `.playing` クラスを付与 (背景アクセント色)、`onend`/`onerror` で解除。aria-label は表示言語に応じて `updatePlayLabels(code)` が再生成 (例: `日本語の発音を再生` / `Play Japanese pronunciation` / `일본어 발음 재생` / `播放日语发音`、`PLAY_LABELS` × `LANG_NAMES_LOCALIZED` の組み合わせで 4×4 = 16 通り)。初期 HTML の aria-label は日本語名 (`LANG_LABELS_JA`: 英語/韓国語/中国語) で出力し、no-JS でも自然な日本語読み上げになるようにしている
 
 ### コンテンツ差別化設計 (カード / モーダル / 種ページ)
 
@@ -182,9 +183,9 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
 | 名前 | 和名 or 表示言語 | 表示言語 | 和名 + 英名 + 学名 |
 | 綱/目/科 タグ | 綱のみ (アイコン付き) | 綱のみ | 綱/目/科 全階層 |
 | オノマトペ | 表示言語 main のみ | 表示言語 (場面なし) | 4 言語 + 場面 + 発音再生ボタン |
-| 外部リンク | なし | なし | あり (Wikipedia / xeno-canto / ML) |
+| 外部リンク | なし | なし | あり (Wikimedia Commons / Wikipedia / xeno-canto / ML) |
 | 共有ボタン | なし | なし | あり (X/Facebook/LINE/URLコピー) |
-| 保全状況 | — | コードのみ | コード + 日本語ラベル |
+| 保全状況 | — | コードのみ | コード + 表示言語のラベル |
 | 関連種 | なし | なし | あり |
 | 詳細リンク | あり (モーダル内) | あり (「詳細ページで見る →」) | — (自ページ) |
 
@@ -195,7 +196,7 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
 - `MODAL_LABELS` — モーダル内ラベル (ono / info / voiceMethod / conservation / regions) 4 言語
 - `MODAL_HINT` / `CLOSE_LABEL` — モーダル操作ヒント 4 言語
 - `DETAIL_LINK_LABEL` — モーダル内「詳細ページで見る →」のテキスト 4 言語
-- `VOICE_METHOD_EN` — 発声方法の日本語→英語マップ (27 エントリ。`scripts/build.py` の同名定数とミラー)
+- `VOICE_METHOD_EN` — 発声方法の日本語→英語マップ (`scripts/build.py` の同名定数とミラー)
 - `ALL_LABEL` — フィルタ「すべて」4 言語
 - `SEARCH_LABELS` — 検索ボックス全要素 (label / placeholder / hint / clear / filters / langTabs / noResults / loading / loadError) 4 言語
 - `getDisplayName(a)` — `displayLang` に応じた名前返却
@@ -238,12 +239,12 @@ ID, 和名, 門, 綱, 目, 科, 鳴き声の有無, オノマトペ（日本語�
   - トップページ: `<link rel="canonical" href="https://koe-zukan.semnil.com/">` — `?lang=` / `?id=` / `?q=` の各バリエーションを `/` に正規化
   - 種ページ: `<link rel="canonical" href=".../species/{ID}/">` — `?lang=` 付き URL を正規化
 - 構造化データ (JSON-LD):
-  - トップページ: `@type: WebSite` (name / alternateName / url / description / `inLanguage: [ja, en, ko, zh]` / `potentialAction: SearchAction`)。Google の Sitelinks Search Box 対象
+  - トップページ: `@type: WebSite` (name / alternateName / url / description / `inLanguage: [ja, en, ko, zh]` / `potentialAction: SearchAction`)
   - SearchAction の `urlTemplate` は `https://koe-zukan.semnil.com/?q={search_term_string}` で、index.html の JS が `?q=` を受けて検索ボックスに投入 + `onSearch()` を実行
-  - 種ページ: `@type: Article` (headline / description / url / publisher)。文字列は `_json_for_script()` で `<`/`>`/`&` を `<` 等にエスケープ済み
+  - 種ページ: `@type: Article` (headline / description / url / publisher)。文字列は `_json_for_script()` で `<`/`>`/`&` を `\u003c` 等にエスケープ済み
 - サイトマップ: `dist/sitemap.xml` はトップページ 1 URL のみ。種ページは内部リンク (モーダル → 種ページ + 関連種) で発見可能だがサイトマップ非掲載
   - 理由: 種ページは「クロール済み - インデックス未登録」が大量発生したため除外 (コミット `8f76bf3` の方針)
-- meta description / OGP / Twitter Card は両ページに設定。og:locale は初期 HTML が `ja_JP`、JS が選択言語に応じて `ja_JP` / `en_US` / `ko_KR` / `zh_CN` に書き換え (Bot は初期 HTML を参照するため SEO 影響は限定的)
+- meta description / OGP / Twitter Card は両ページに設定。og:locale は初期 HTML が `ja_JP`、JS が選択言語に応じて `ja_JP` / `en_US` / `ko_KR` / `zh_CN` に書き換え
 
 ### アクセシビリティ
 
@@ -317,22 +318,19 @@ Fuse.jsインデックスに含まれるフィールドと重み:
 - マスターデータは `data/animal-sounds-data.xlsx` のみ。`dist/` 内のJSONを直接編集しない
 - 種を追加する際は全関連シート（メインデータ、名称マッピング、オノマトペマッピング、地域マッピング）に整合的に追加すること
 - IDは各カテゴリの連番を維持する（欠番は埋めない）
-- 編集後は `python scripts/build.py` で再ビルドする
+- 編集後は `python3 scripts/build.py` で再ビルドする
 
 ## テスト
 
 ```bash
+pip3 install --user --break-system-packages pytest pytest-cov
+
 # Python テスト (build.py)
-python -m pytest tests/test_build.py -v
+python3 -m pytest tests/test_build.py -v
 
 # JavaScript テスト (フロントエンドロジック)
 node --test tests/test_frontend.mjs
 
 # Python テスト + カバレッジ
-python -m pytest tests/test_build.py --cov=scripts --cov-report=term-missing
+python3 -m pytest tests/test_build.py --cov=scripts --cov-report=term-missing
 ```
-
-## 今後の拡張候補
-
-- 第5言語以降の追加（オノマトペマッピングに行を追加するだけで対応可能）
-- Fuse.js のローカルバンドル（PWA オフライン完全対応）
