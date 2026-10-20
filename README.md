@@ -1,28 +1,30 @@
-# koe-zukan（声図鑑）
+# koe-zukan (声図鑑)
 
-多言語対応の動物オノマトペ検索サイト。動物の鳴き声を日本語・英語・韓国語・中国語のオノマトペで検索・比較できます。
+A multilingual animal onomatopoeia search site. Search and compare animal sounds through their onomatopoeia in Japanese, English, Korean and Chinese.
+
+> 日本語版は [README.ja.md](README.ja.md) を参照してください.
 
 ## Features
 
-- 258種の動物データ、572件のオノマトペ（4言語）
-- あいまい検索（和名・英名・学名・オノマトペすべて対象）
-- 綱別フィルタ（鳥綱・哺乳綱・昆虫綱・両生綱・爬虫綱・魚綱 他）
-- 言語切り替え表示（日本語 / English / 한국어 / 中文）
-- Wikimedia Commons 画像参照、xeno-canto / Macaulay Library 音声参照
-- 完全静的サイト — バックエンド不要、Cloudflare Pages Free プランで運用
+- Data for 258 animal species, 572 onomatopoeia entries (4 languages)
+- Fuzzy search (covers Japanese names, English names, scientific names and onomatopoeia)
+- Filter by class (Birds, Mammals, Insects, Amphibians, Reptiles, Fish and more)
+- Switchable display language (日本語 / English / 한국어 / 中文)
+- Image references to Wikimedia Commons, sound references to xeno-canto / Macaulay Library
+- Fully static site — no backend needed, runs on the Cloudflare Pages Free plan
 
 ## Quick Start
 
 ```bash
-# 依存インストール
+# Install dependencies
 pip install openpyxl
 
-# ビルド（Excel → 静的サイト）
+# Build (Excel → static site)
 python scripts/build.py
 
-# ローカルプレビュー
+# Local preview
 cd dist && python -m http.server 8080
-# http://localhost:8080 を開く
+# Open http://localhost:8080
 ```
 
 ## Project Structure
@@ -30,33 +32,33 @@ cd dist && python -m http.server 8080
 ```
 koe-zukan/
 ├── data/
-│   └── animal-sounds-data.xlsx   # マスターデータ
+│   └── animal-sounds-data.xlsx   # Master data
 ├── scripts/
-│   └── build.py                  # Excel → JSON + HTML 生成
+│   └── build.py                  # Generates JSON + HTML from Excel
 ├── templates/
-│   └── index.html                # HTMLテンプレート
-├── dist/                         # ビルド出力（デプロイ対象）
+│   └── index.html                # HTML template
+├── dist/                         # Build output (deployed)
 │   ├── index.html
 │   ├── animals.json
 │   └── regions.json
-├── CLAUDE.md                     # 詳細な技術仕様
+├── CLAUDE.md                     # Detailed technical specification
 └── README.md
 ```
 
 ## Deploy to Cloudflare Pages
 
-1. このリポジトリを GitHub に push
+1. Push this repository to GitHub
 2. [Cloudflare Dashboard](https://dash.cloudflare.com) → Workers & Pages → Create → Pages → Connect to Git
-3. ビルド設定:
+3. Build settings:
    - Build command: `pip install openpyxl && python scripts/build.py`
    - Build output directory: `dist`
-4. デプロイ完了 → `https://<project>.pages.dev` で公開
+4. When the deploy finishes → published at `https://<project>.pages.dev`
 
 ## Data Editing
 
-マスターデータは `data/animal-sounds-data.xlsx` で管理しています。Excel ファイルの編集後に `python scripts/build.py` を実行すると `dist/` が再生成されます。
+The master data is kept in `data/animal-sounds-data.xlsx`. After editing the Excel file, run `python scripts/build.py` to regenerate `dist/`.
 
-データ構造の詳細は [CLAUDE.md](CLAUDE.md) を参照してください。
+See [CLAUDE.md](CLAUDE.md) for the details of the data structure.
 
 ## License
 
