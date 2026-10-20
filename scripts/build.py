@@ -3,10 +3,10 @@
 build.py — Excel → static site generation script
 
 Reads data/animal-sounds-data.xlsx and writes the static site to dist/.
-Dependencies: openpyxl, Pillow (pip install openpyxl Pillow)
+Dependencies: openpyxl, Pillow (pip3 install --user --break-system-packages openpyxl Pillow)
 
 Usage:
-    python scripts/build.py
+    python3 scripts/build.py
 """
 
 import html as html_mod
@@ -21,7 +21,7 @@ from urllib.parse import quote, urlparse
 try:
     import openpyxl
 except ImportError:
-    print("Error: openpyxl is required. Install with: pip install openpyxl")
+    print("Error: openpyxl is required. Install with: pip3 install --user --break-system-packages openpyxl")
     sys.exit(1)
 
 # ── Paths ─────────────────────────────────────────────

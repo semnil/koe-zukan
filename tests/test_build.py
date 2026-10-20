@@ -2,7 +2,7 @@
 tests/test_build.py — build.py unit tests
 
 Usage:
-    python -m pytest tests/ -v
+    python3 -m pytest tests/ -v
 """
 
 import html as html_mod

@@ -6,7 +6,7 @@ Uses the scientific names in the 名称マッピング sheet to fetch taxonCodes
 and writes each taxonCode to column O (the 15th column) of the メインデータ sheet.
 
 Usage:
-    python scripts/fetch_taxon_codes.py [--dry-run]
+    python3 scripts/fetch_taxon_codes.py [--dry-run]
 """
 
 import sys
@@ -19,7 +19,7 @@ from pathlib import Path
 try:
     import openpyxl
 except ImportError:
-    print("Error: openpyxl required. pip install openpyxl")
+    print("Error: openpyxl required. pip3 install --user --break-system-packages openpyxl")
     sys.exit(1)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

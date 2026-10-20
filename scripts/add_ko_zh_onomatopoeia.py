@@ -15,7 +15,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 try:
     import openpyxl
 except ImportError:
-    print("Error: openpyxl required. pip install openpyxl")
+    print("Error: openpyxl required. pip3 install --user --break-system-packages openpyxl")
     sys.exit(1)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

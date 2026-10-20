@@ -7,7 +7,7 @@ recordings to data/no-audio.json. build.py reads this file and skips
 generating audioRef for them.
 
 Usage:
-    python scripts/check_audio.py
+    python3 scripts/check_audio.py
 """
 
 import json
@@ -19,7 +19,7 @@ from pathlib import Path
 try:
     import openpyxl
 except ImportError:
-    print("Error: openpyxl required. pip install openpyxl")
+    print("Error: openpyxl required. pip3 install --user --break-system-packages openpyxl")
     sys.exit(1)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

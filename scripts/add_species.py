@@ -6,7 +6,7 @@ Adds the species defined in the SPECIES_DATA list to each sheet of the Excel fil
 A species whose ID or scientific name already exists is skipped.
 
 Usage:
-    python scripts/add_species.py [--dry-run]
+    python3 scripts/add_species.py [--dry-run]
 """
 
 import sys
@@ -15,7 +15,7 @@ from pathlib import Path
 try:
     import openpyxl
 except ImportError:
-    print("Error: openpyxl required. pip install openpyxl")
+    print("Error: openpyxl required. pip3 install --user --break-system-packages openpyxl")
     sys.exit(1)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
