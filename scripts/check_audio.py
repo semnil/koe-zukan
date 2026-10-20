@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-check_audio.py — Macaulay Library に音声が存在するか確認し、スキップリストを生成
+check_audio.py — checks whether the Macaulay Library has audio and generates the skip list
 
-taxonCode ごとに ML API を叩き、音声 0 件の taxonCode を
-data/no-audio.json に書き出す。build.py はこのファイルを参照して
-audioRef 生成をスキップする。
+Calls the ML API for each taxonCode and writes the taxonCodes with 0 audio
+recordings to data/no-audio.json. build.py reads this file and skips
+generating audioRef for them.
 
-使い方:
-    python scripts/check_audio.py
+Usage:
+    python3 scripts/check_audio.py
 """
 
 import json
@@ -19,7 +19,7 @@ from pathlib import Path
 try:
     import openpyxl
 except ImportError:
-    print("Error: openpyxl required. pip install openpyxl")
+    print("Error: openpyxl required. pip3 install --user --break-system-packages openpyxl")
     sys.exit(1)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
