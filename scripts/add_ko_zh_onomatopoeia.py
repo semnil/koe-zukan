@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-add_ko_zh_onomatopoeia.py — 韓国語・中国語オノマトペを全種に拡充
+add_ko_zh_onomatopoeia.py — extends Korean and Chinese onomatopoeia to every species
 
-既存の ko/zh エントリがない種に対してオノマトペを追加する。
-オノマトペマッピングシートに行を追加する。
+Adds onomatopoeia for the species that have no existing ko/zh entry.
+Adds rows to the オノマトペマッピング sheet.
 """
 
 import io
@@ -15,7 +15,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 try:
     import openpyxl
 except ImportError:
-    print("Error: openpyxl required. pip install openpyxl")
+    print("Error: openpyxl required. pip3 install --user --break-system-packages openpyxl")
     sys.exit(1)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -26,10 +26,10 @@ DATA_FILE = PROJECT_ROOT / "data" / "animal-sounds-data.xlsx"
 # Scene column is left empty (same as existing pilot data).
 
 ONOMATOPOEIA_DATA = {
-    # ── A: 初期サンプル ──
+    # ── A: initial samples ──
     "A005": ("끼이끼이", "嘎嘎"),
 
-    # ── B: 鳥類 ──
+    # ── B: birds ──
     "B021": ("쥬르르르", "啾啾啾"),
     "B022": ("찌이이", "唧唧"),
     "B023": ("호이호이호이", "啾啾"),
@@ -111,7 +111,7 @@ ONOMATOPOEIA_DATA = {
     "B121": ("코오코오", "鹅鹅"),
     "B122": ("끼요끼요", "咯咯"),
 
-    # ── M: 哺乳類 ──
+    # ── M: mammals ──
     "M001": ("멍멍", "汪汪"),
     "M002": ("야옹", "喵喵"),
     "M003": ("으르르", "吼吼"),
@@ -191,7 +191,7 @@ ONOMATOPOEIA_DATA = {
     "M080": ("끼이끼이", "吱吱"),
     "M081": ("우우", "呜呜"),
 
-    # ── I: 昆虫 ──
+    # ── I: insects ──
     "I001": ("릴릴릴", "铃铃铃"),
     "I002": ("찌르르르", "唧唧"),
     "I003": ("리리리리", "唧唧"),
@@ -228,7 +228,7 @@ ONOMATOPOEIA_DATA = {
     "I043": ("사각", "沙沙"),
     "I044": ("지이지이", "叽叽"),
 
-    # ── F: 両生類 ──
+    # ── F: amphibians ──
     "F003": ("개굴개굴", "呱呱"),
     "F004": ("개굴개굴", "呱呱"),
     "F005": ("코로코로", "咯咯"),
@@ -259,7 +259,7 @@ ONOMATOPOEIA_DATA = {
     "F030": ("개굴개굴", "呱呱"),
     "F033": ("개굴개굴", "呱呱"),
 
-    # ── R: 爬虫類 ──
+    # ── R: reptiles ──
     "R001": ("찍찍", "叽叽"),
     "R002": ("또게이", "嗒嗒"),
     "R003": ("씩씩", "嘶嘶"),
@@ -281,7 +281,7 @@ ONOMATOPOEIA_DATA = {
     "R019": ("으르르", "吼吼"),
     "R020": ("씩씩", "嘶嘶"),
 
-    # ── S: 魚類 ──
+    # ── S: fish ──
     "S001": ("꾸우꾸우", "咕咕"),
     "S002": ("뻐억뻐억", "噗噗"),
     "S003": ("끼이끼이", "叽叽"),
@@ -300,7 +300,7 @@ ONOMATOPOEIA_DATA = {
     "S017": ("끼이끼이", "叽叽"),
     "S018": ("끼이끼이", "叽叽"),
 
-    # ── V: 無脊椎動物 ──
+    # ── V: invertebrates ──
     "V001": ("딱딱", "嗒嗒"),
     "V002": ("끼이끼이", "叽叽"),
     "V003": ("딱딱", "嗒嗒"),

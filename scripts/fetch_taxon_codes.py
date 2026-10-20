@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-fetch_taxon_codes.py — Macaulay Library taxonCode を学名から取得し Excel に書き込む
+fetch_taxon_codes.py — fetches Macaulay Library taxonCodes from scientific names and writes them to Excel
 
-名称マッピングシートの学名を使い、taxonomy API で taxonCode を取得。
-メインデータシートの O列 (15列目) に taxonCode を書き込む。
+Uses the scientific names in the 名称マッピング sheet to fetch taxonCodes from the taxonomy API,
+and writes each taxonCode to column O (the 15th column) of the メインデータ sheet.
 
-使い方:
-    python scripts/fetch_taxon_codes.py [--dry-run]
+Usage:
+    python3 scripts/fetch_taxon_codes.py [--dry-run]
 """
 
 import sys
@@ -19,7 +19,7 @@ from pathlib import Path
 try:
     import openpyxl
 except ImportError:
-    print("Error: openpyxl required. pip install openpyxl")
+    print("Error: openpyxl required. pip3 install --user --break-system-packages openpyxl")
     sys.exit(1)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
