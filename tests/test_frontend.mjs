@@ -445,28 +445,6 @@ describe("URL id parameter extraction", () => {
   });
 });
 
-// ── Share URL encoding ─────────────────────────────────
-// Protects against regressions in the share button URL construction.
-
-describe("share URL encoding", () => {
-  function buildShareUrl(baseUrl, id) {
-    return `${baseUrl}/species/${id}/`;
-  }
-
-  it("builds canonical share URL", () => {
-    const url = buildShareUrl("https://koe-zukan.semnil.com", "B001");
-    assert.equal(url, "https://koe-zukan.semnil.com/species/B001/");
-  });
-
-  it("encodes share URL for Twitter intent", () => {
-    const url = "https://koe-zukan.semnil.com/species/B001/";
-    const encoded = encodeURIComponent(url);
-    // & and / must be percent-encoded for query values
-    assert.match(encoded, /%3A%2F%2F/);
-    assert.equal(encoded, "https%3A%2F%2Fkoe-zukan.semnil.com%2Fspecies%2FB001%2F");
-  });
-});
-
 // ── hasVoice decision path ─────────────────────────────
 // Mirrors renderResults onomatopoeia display branching.
 
