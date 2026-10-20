@@ -341,8 +341,9 @@ class TestGenerateSpeciesPages:
         animal["note"] = ""
         build.generate_species_pages([animal], tmp_path)
         page = (tmp_path / "species" / "B001" / "index.html").read_text(encoding="utf-8")
-        # 備考行 (detail-row + label) は描画されない。日本語ラベル文字列は i18n
-        # 辞書にも含まれるため "備考" 単体での検査ではなく構造マーカで判定する。
+        # The note row (detail-row + label) is not rendered. The Japanese label
+        # string is also in the i18n dictionary, so the check uses the structural
+        # marker instead of "備考" alone.
         assert 'data-i18n="note"' not in page
 
     def test_species_page_with_note(self, tmp_path):

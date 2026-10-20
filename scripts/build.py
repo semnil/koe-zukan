@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-build.py — Excel → 静的サイト生成スクリプト
+build.py — Excel → static site generation script
 
-data/animal-sounds-data.xlsx を読み込み、dist/ に静的サイトを出力する。
-依存: openpyxl, Pillow (pip install openpyxl Pillow)
+Reads data/animal-sounds-data.xlsx and writes the static site to dist/.
+Dependencies: openpyxl, Pillow (pip install openpyxl Pillow)
 
-使い方:
+Usage:
     python scripts/build.py
 """
 
@@ -84,7 +84,7 @@ def _build_audio_ref(aid, scientific_name, taxon_code):
 def extract_data(wb):
     """Excel workbook → Python dicts"""
 
-    # ── 名称マッピング ──
+    # ── Sheet 名称マッピング (names) ──
     ws_name = wb["名称マッピング"]
     name_map = {}
     for row in ws_name.iter_rows(min_row=2, values_only=True):
@@ -96,7 +96,7 @@ def extract_data(wb):
                 "altEN": row[5] or "",
             }
 
-    # ── オノマトペマッピング ──
+    # ── Sheet オノマトペマッピング (onomatopoeia) ──
     ws_ono = wb["オノマトペマッピング"]
     ono_map = {}
     for row in ws_ono.iter_rows(min_row=2, values_only=True):
@@ -112,7 +112,7 @@ def extract_data(wb):
                 "note": row[6] or "",
             })
 
-    # ── 地域マスター ──
+    # ── Sheet 地域マスター (region master) ──
     ws_rm = wb["地域マスター"]
     region_master = {}
     for row in ws_rm.iter_rows(min_row=2, values_only=True):
@@ -123,7 +123,7 @@ def extract_data(wb):
                 "areaCode": row[3] or "",
             }
 
-    # ── 地域マッピング ──
+    # ── Sheet 地域マッピング (region mapping) ──
     ws_reg = wb["地域マッピング"]
     region_map = {}
     for row in ws_reg.iter_rows(min_row=2, values_only=True):
@@ -135,7 +135,7 @@ def extract_data(wb):
             if rid:
                 region_map[aid].append(rid)
 
-    # ── 分類マッピング ──
+    # ── Sheet 分類マッピング (taxonomy mapping) ──
     ws_tax = wb["分類マッピング"]
     tax_map = {}
     for row in ws_tax.iter_rows(min_row=2, values_only=True):
@@ -145,7 +145,7 @@ def extract_data(wb):
                 "englishName": row[3] or "",
             }
 
-    # ── メインデータ → animals ──
+    # ── Sheet メインデータ (main data) → animals ──
     ws = wb["メインデータ"]
     animals = []
     for row in ws.iter_rows(min_row=2, values_only=True):
@@ -197,7 +197,7 @@ def extract_data(wb):
         }
         animals.append(animal)
 
-    # ── 地域マスター (flat) ──
+    # ── Regions from sheet 地域マスター (flat) ──
     regions_data = []
     for rid, rm in sorted(region_master.items()):
         regions_data.append({"id": rid, **rm})
@@ -631,7 +631,7 @@ def _build_related_species(current, animals, count=4):
 
 
 def _build_related_html(related, esc):
-    """Build 同じ仲間の動物 section HTML from a list of animal dicts.
+    """Build the "Related species" (同じ仲間の動物) section HTML from a list of animal dicts.
 
     The initial HTML stays Japanese for SEO/no-JS users; the species page's
     client script rewrites .related-item content based on the chosen display

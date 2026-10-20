@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-add_species.py — 種を一括追加するスクリプト
+add_species.py — script that adds species in bulk
 
-SPECIES_DATA リストに定義された種を Excel の各シートに追加する。
-既存 ID / 学名との重複はスキップ。
+Adds the species defined in the SPECIES_DATA list to each sheet of the Excel file.
+A species whose ID or scientific name already exists is skipped.
 
-使い方:
+Usage:
     python scripts/add_species.py [--dry-run]
 """
 
@@ -21,7 +21,7 @@ except ImportError:
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_FILE = PROJECT_ROOT / "data" / "animal-sounds-data.xlsx"
 
-# ── 追加種データ ──────────────────────────────────────
+# ── Species data to add ──────────────────────────────────────
 # Each entry:
 #   id, nameJA, phylum, class, order, family, hasVoice, onomatopoeiaJA,
 #   voiceMethod, habitat, conservation,
@@ -30,7 +30,7 @@ DATA_FILE = PROJECT_ROOT / "data" / "animal-sounds-data.xlsx"
 #   regions: [regionID, ...]
 
 SPECIES_DATA = [
-    # ── 鳥類 (+27) ──
+    # ── Birds (+27) ──
     {
         "id": "B096", "nameJA": "ツグミ", "phylum": "脊索動物門", "class": "鳥綱",
         "order": "スズメ目", "family": "ヒタキ科", "hasVoice": "あり",
@@ -278,7 +278,7 @@ SPECIES_DATA = [
         "regions": ["REG01", "REG03", "REG05"],
     },
 
-    # ── 哺乳類 (+13) ──
+    # ── Mammals (+13) ──
     {
         "id": "M069", "nameJA": "ジャガー", "phylum": "脊索動物門", "class": "哺乳綱",
         "order": "ネコ目", "family": "ネコ科", "hasVoice": "あり",
@@ -401,7 +401,7 @@ SPECIES_DATA = [
         "regions": ["REG06"],
     },
 
-    # ── 昆虫 (+13) ──
+    # ── Insects (+13) ──
     {
         "id": "I033", "nameJA": "ツクツクボウシ", "phylum": "節足動物門", "class": "昆虫綱",
         "order": "カメムシ目", "family": "セミ科", "hasVoice": "あり",
@@ -522,7 +522,7 @@ SPECIES_DATA = [
         "regions": ["REG01"],
     },
 
-    # ── 両生類 (+6) ──
+    # ── Amphibians (+6) ──
     {
         "id": "F030", "nameJA": "アフリカウシガエル", "phylum": "脊索動物門", "class": "両生綱",
         "order": "カエル目", "family": "アカガエル科", "hasVoice": "あり",
@@ -579,7 +579,7 @@ SPECIES_DATA = [
         "regions": ["REG01"],
     },
 
-    # ── 爬虫類 (+6) ──
+    # ── Reptiles (+6) ──
     {
         "id": "R015", "nameJA": "グリーンイグアナ", "phylum": "脊索動物門", "class": "爬虫綱",
         "order": "有鱗目", "family": "イグアナ科", "hasVoice": "あり",
@@ -639,7 +639,7 @@ SPECIES_DATA = [
         "regions": ["REG15", "REG16"],
     },
 
-    # ── 魚類 (+6) ──
+    # ── Fish (+6) ──
     {
         "id": "S013", "nameJA": "ナマズ（マナマズ）", "phylum": "脊索動物門", "class": "条鰭綱",
         "order": "ナマズ目", "family": "ナマズ科", "hasVoice": "あり",
@@ -697,7 +697,7 @@ SPECIES_DATA = [
         "regions": ["REG01", "REG23"],
     },
 
-    # ── 無脊椎動物 (+6) ──
+    # ── Invertebrates (+6) ──
     {
         "id": "V007", "nameJA": "テッポウエビ", "phylum": "節足動物門", "class": "軟甲綱",
         "order": "エビ目", "family": "テッポウエビ科", "hasVoice": "あり",
@@ -796,7 +796,7 @@ def main():
         print(f"  ADD  {aid} {sp['nameJA']} ({sci})")
 
         if not dry_run:
-            # メインデータ
+            # Sheet メインデータ (main data)
             ws_main.append([
                 aid, sp["nameJA"], sp["phylum"], sp["class"],
                 sp["order"], sp["family"], sp["hasVoice"],
@@ -806,19 +806,19 @@ def main():
                 None, None, None,  # note, old audioRef, taxonCode (filled by fetch_taxon_codes.py)
             ])
 
-            # 名称マッピング
+            # Sheet 名称マッピング (names)
             ws_name.append([
                 aid, sp["nameJA"], sci, sp["nameEN"],
                 sp.get("altJA"), sp.get("altEN"),
             ])
 
-            # オノマトペマッピング
+            # Sheet オノマトペマッピング (onomatopoeia)
             for ono in sp.get("onomatopoeia", []):
                 ws_ono.append([
                     aid, sp["nameJA"], ono[0], ono[1], ono[2], ono[3], None,
                 ])
 
-            # 地域マッピング
+            # Sheet 地域マッピング (region mapping)
             for rid in sp.get("regions", []):
                 ws_reg.append([aid, sp["nameJA"], rid])
 

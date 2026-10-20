@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-add_kanji_names.py — カタカナ和名に対応する漢字名を altJA に追加
+add_kanji_names.py — adds the kanji names that match the katakana Japanese names to altJA
 
-名称マッピングシートの altJA 列に漢字表記を追記する。
-既に altJA に値がある場合はカンマ区切りで追加する。
+Appends the kanji spelling to the altJA column of the 名称マッピング sheet.
+When altJA already has a value, the kanji name is added after a comma.
 """
 
 import io
@@ -24,13 +24,13 @@ DATA_FILE = PROJECT_ROOT / "data" / "animal-sounds-data.xlsx"
 # Kanji mappings: ID → kanji name(s)
 # Multiple kanji separated by comma
 KANJI_MAP = {
-    # ── A: サンプル ──
+    # ── A: samples ──
     "A001": "日本猿",
     "A002": "嘴太烏",
     "A003": "日本雨蛙",
     "A004": "閻魔蟋蟀",
     "A005": "赤海亀",
-    # ── B: 鳥類 ──
+    # ── B: birds ──
     "B001": "雀",
     "B003": "嘴細烏",
     "B004": "鶯",
@@ -124,7 +124,7 @@ KANJI_MAP = {
     "B113": "虎鶫,鵺",
     "B121": "白鳥",
     "B122": "赤翡翠",
-    # ── M: 哺乳類 ──
+    # ── M: mammals ──
     "M001": "犬",
     "M002": "猫",
     "M003": "獅子",
@@ -177,7 +177,7 @@ KANJI_MAP = {
     "M071": "縞栗鼠",
     "M080": "川獺",
     "M081": "猩々",
-    # ── I: 昆虫 ──
+    # ── I: insects ──
     "I001": "鈴虫",
     "I002": "松虫",
     "I003": "綴刺蟋蟀",
@@ -211,7 +211,7 @@ KANJI_MAP = {
     "I032": "鬼蜻蜓",
     "I043": "蟷螂",
     "I044": "螻蛄",
-    # ── F: 両生類 ──
+    # ── F: amphibians ──
     "F001": "殿様蛙",
     "F002": "牛蛙",
     "F003": "日本蟇蛙",
@@ -223,7 +223,7 @@ KANJI_MAP = {
     "F014": "赤腹井守",
     "F017": "阿弗利加爪蛙",
     "F027": "中国大山椒魚",
-    # ── R: 爬虫類 ──
+    # ── R: reptiles ──
     "R001": "日本守宮",
     "R003": "青大将",
     "R004": "蝮",
@@ -233,7 +233,7 @@ KANJI_MAP = {
     "R010": "日本鼈",
     "R012": "日本蜥蜴",
     "R017": "緑亀",
-    # ── S: 魚類 ──
+    # ── S: fish ──
     "S001": "魴鮄",
     "S002": "石鯛",
     "S003": "虎河豚",
@@ -244,7 +244,7 @@ KANJI_MAP = {
     "S013": "鯰",
     "S016": "鯉",
     "S018": "太刀魚",
-    # ── V: 無脊椎動物 ──
+    # ── V: invertebrates ──
     "V001": "鉄砲蝦",
     "V002": "伊勢海老",
     "V004": "砂蟹",
