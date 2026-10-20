@@ -130,7 +130,7 @@
 |---|---|---|
 | S1 (CRITICAL) | 1 (V001) | 1 |
 | S2 (HIGH) | 1 (V002) | 1 |
-| S3 (MEDIUM) | 8 (V003, V004, V006, V008, V009, V010, V011) | 5 |
+| S3 (MEDIUM) | 7 (V003, V004, V006, V008, V009, V010, V011) | 4 |
 | S4 (LOW) | 3 (V005, V007, V012) | 0 |
 
 Not fixed (no action needed / low priority): V003, V005, V006, V007, V009, V012
@@ -255,7 +255,7 @@ The following are items judged during the audit as "no functional impact / sugge
 | ~~Q007~~ | ~~`lastmod` in `sitemap.xml` is the same day for all URLs~~ | Resolved: reduced the sitemap to the top page only |
 | L8 (UX R3) | `.share-btn` falls short of 44x44 (~31px) | Meets WCAG 2.5.8 AA (24x24). Only the AAA criterion is not met |
 | L9 (UX R3) | PNG icons not registered in the `sw.js` precache | No functional impact because Chrome fetches them automatically via the manifest |
-| Info-1 (UX R3) | With the maskable icon's seafzone at 80%, the cat ear tips may be clipped | Within the range where visibility is maintained under actual device masks |
+| Info-1 (UX R3) | With the maskable icon's safe zone at 80%, the cat ear tips may be clipped | Within the range where visibility is maintained under actual device masks |
 | O002 (QA R3) | `<link rel="manifest">` not added to species pages | No problem when arriving via the top page |
 | O003 (QA R3) | No explicit "鳴き声なし" ("Silent") badge on species pages | Already shown explicitly on the card list side |
 
@@ -285,7 +285,7 @@ Feature additions aimed at SEO and UX improvements, and full multilingual UI sup
 |---|---|---|---|
 | S1 (CRITICAL) | 1 (V001) | 1 | 0 |
 | S2 (HIGH) | 3 (V002, V013, V017) | 3 | 0 |
-| S3 (MEDIUM) | 12 (V003, V004, V006, V008, V009, V010, V011, V014, V015, V018, V019, V023) | 10 | 2 (V003, V006, V009) |
+| S3 (MEDIUM) | 12 (V003, V004, V006, V008, V009, V010, V011, V014, V015, V018, V019, V023) | 9 | 3 (V003, V006, V009) |
 | S4 (LOW) | 7 (V005, V007, V012, V016, V020, V021, V022) | 4 | 3 (V005, V007, V012) |
 | Informational | 1 (V024) | Verification complete | — |
 
@@ -304,7 +304,7 @@ V025: Related species links, content differentiation, multilingual support for a
 - **Technique**: i18n DOM rewrite design, separation of responsibilities between bots and JS clients, contract review
 - **Changes**:
   1. **4-language switching on the detail page**: Added an `I18N` dictionary (labels + 9 IUCN translations) to `templates/species.html`, and `applyLang(code)` rewrites all text, aria-labels, and the related species grid. The initial HTML stays in Japanese (for SEO / no-JS visitors)
-  2. **Data embedding**: Added `_build_species_payload` / `_build_related_payload` / `_json_for_inline_script` to `scripts/build.py`. Embeds species-specific data (`SPECIES_DATA`) and related species data (`RELATED_DATA`) into the species page as `<script>`-safe JSON (escaping `<` `>` `&` to `<` `>` `&`)
+  2. **Data embedding**: Added `_build_species_payload` / `_build_related_payload` / `_json_for_inline_script` to `scripts/build.py`. Embeds species-specific data (`SPECIES_DATA`) and related species data (`RELATED_DATA`) into the species page as `<script>`-safe JSON (escaping `<` `>` `&` to `\u003c` `\u003e` `\u0026`)
   3. **DOM markers**: `data-i18n` (text) / `data-link-kind` (external link aria-label) / `data-share-kind` (share button aria-label + copy label) are added on the build.py side and accessed generically from `applyLang`
   4. **Changed the language fallback from ja → en**: Shared by `index.html` / `species.html`: URL `?lang=` → `navigator.language` → English fallback. So that non-CJK visitors such as French or German speakers do not see kanji they cannot read
   5. **Unified language tab position**: Placed in the header of `index.html` (right side of `.header-inner`) and inside the top-bar of `species.html`. Unified with a semi-transparent frame style on the green gradient band + `min-height: 44px` (keeping WCAG 2.1 AA tap targets)
