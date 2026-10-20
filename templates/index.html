@@ -477,41 +477,6 @@ header {
 }
 .no-results svg { margin-bottom: 0.5rem; }
 
-/* Share buttons */
-.share-section {
-  margin-top: 1rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--border);
-}
-.share-section h3 {
-  font-size: 0.85rem;
-  color: var(--text2);
-  margin-bottom: 0.5rem;
-  font-weight: 600;
-}
-.share-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-.share-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.35rem 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--card);
-  font-size: 0.78rem;
-  cursor: pointer;
-  text-decoration: none;
-  color: var(--text);
-  font-family: inherit;
-  transition: background 0.15s;
-}
-.share-btn:hover { background: var(--hover); }
-.share-btn.copied { background: var(--accent-light); color: var(--accent); }
-
 /* Footer */
 footer {
   max-width: 900px;
@@ -840,11 +805,6 @@ async function init() {
     const card = e.target.closest(".card");
     if (card && card.dataset.id) openModal(card.dataset.id);
   });
-  // Delegation for copy-URL share buttons (rendered dynamically in modal).
-  document.addEventListener("click", e => {
-    const btn = e.target.closest("[data-copy-url]");
-    if (btn) copyShareUrl(btn.dataset.copyUrl, btn);
-  });
   document.getElementById("modalOverlay").addEventListener("click", e => {
     if (e.target === e.currentTarget) closeModal();
   });
@@ -1113,30 +1073,6 @@ function closeModal(pushState = true) {
     url.searchParams.delete("id");
     history.pushState({}, "", url);
   }
-}
-
-function shareButtons(a) {
-  const url = `{{SITE_URL}}/species/${a.id}/`;
-  const text = `${a.nameJA}（${a.nameEN}）の鳴き声`;
-  const eu = encodeURIComponent(url);
-  const et = encodeURIComponent(text);
-  return `
-    <a class="share-btn" href="https://twitter.com/intent/tweet?text=${et}&url=${eu}" target="_blank" rel="noopener" aria-label="X (Twitter) で共有 (新しいタブ)">X Post</a>
-    <a class="share-btn" href="https://www.facebook.com/sharer/sharer.php?u=${eu}" target="_blank" rel="noopener" aria-label="Facebook で共有 (新しいタブ)">Facebook</a>
-    <a class="share-btn" href="https://social-plugins.line.me/lineit/share?url=${eu}" target="_blank" rel="noopener" aria-label="LINE で共有 (新しいタブ)">LINE</a>
-    <button type="button" class="share-btn" data-copy-url="${esc(url)}"><span aria-hidden="true">📋</span> URLをコピー</button>
-  `;
-}
-
-function copyShareUrl(url, btn) {
-  navigator.clipboard.writeText(url).then(() => {
-    btn.classList.add("copied");
-    btn.textContent = "✓ コピーしました";
-    setTimeout(() => { btn.classList.remove("copied"); btn.innerHTML = '<span aria-hidden="true">📋</span> URLをコピー'; }, 2000);
-  }).catch(() => {
-    btn.textContent = "コピー失敗";
-    setTimeout(() => { btn.innerHTML = '<span aria-hidden="true">📋</span> URLをコピー'; }, 2000);
-  });
 }
 
 function esc(s) {
