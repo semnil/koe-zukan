@@ -11,3 +11,6 @@ __pycache__/
 .coverage
 .pytest_cache/
 .claude/
+
+# Local working files (backups, logs, check scripts)
+/work/
