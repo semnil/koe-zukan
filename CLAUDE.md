@@ -272,6 +272,7 @@ The detail page is self-contained and switches between 4 languages. When `applyL
 - Every external link has `rel="noopener"`
 - URL construction is unified on `encodeURIComponent()` (JS side) / `urllib.parse.quote(..., safe="")` (Python side)
 - Wikipedia links use the same encoding rule in both Python and JS (V011 fix)
+- Master-data validation: `validate_data()` (scripts/build.py) stops the build before anything is written when a main-data ID does not fully match `ID_PATTERN` (`[A-Z][0-9]+`), a non-empty `imageRef` does not start with `IMAGE_REF_PREFIX` (`https://commons.wikimedia.org/`), or any extracted animal or region value contains `{{`
 
 ### PWA / Service Worker
 

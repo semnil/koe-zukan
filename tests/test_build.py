@@ -714,6 +714,75 @@ class TestJsonLdInjectionSafety:
             )
 
 
+# ── validate_data ───────────────────────────────────────
+
+class TestValidateData:
+    """Master-data checks that run before the build writes anything."""
+
+    def _make_animal(self, aid="B001", **overrides):
+        animal = {
+            "id": aid,
+            "nameJA": "スズメ",
+            "nameEN": "Eurasian Tree Sparrow",
+            "imageRef": "https://commons.wikimedia.org/wiki/Category:Passer_montanus",
+            "onomatopoeia": [
+                {"lang": "ja", "onomatopoeia": "チュンチュン", "scene": "", "note": ""},
+            ],
+            "regions": [{"id": "R01", "nameJA": "日本", "nameEN": "Japan"}],
+        }
+        animal.update(overrides)
+        return animal
+
+    def test_valid_data_has_no_errors(self):
+        regions = [{"id": "R01", "nameJA": "日本", "nameEN": "Japan", "areaCode": "JP"}]
+        assert build.validate_data([self._make_animal()], regions) == []
+
+    def test_empty_image_ref_is_allowed(self):
+        assert build.validate_data([self._make_animal(imageRef="")], []) == []
+
+    @pytest.mark.parametrize("aid", ["../../escaped", "B001/..", "B001\n", "b001", "B", "B001{{ID}}"])
+    def test_rejects_id_outside_pattern(self, aid):
+        errors = build.validate_data([self._make_animal(aid)], [])
+        assert any("does not match" in e for e in errors), errors
+
+    @pytest.mark.parametrize("ref", [
+        "javascript:alert(1)",
+        "https://example.com/wiki/Category:X",
+        "http://commons.wikimedia.org/wiki/Category:X",
+        12,
+    ])
+    def test_rejects_image_ref_outside_commons(self, ref):
+        errors = build.validate_data([self._make_animal(imageRef=ref)], [])
+        assert any("imageRef" in e for e in errors), errors
+
+    def test_rejects_placeholder_text_in_nested_animal_value(self):
+        animal = self._make_animal(onomatopoeia=[
+            {"lang": "ja", "onomatopoeia": "{{SPECIES_DATA_JSON}}", "scene": "", "note": ""},
+        ])
+        errors = build.validate_data([animal], [])
+        assert any("onomatopoeia[0].onomatopoeia" in e for e in errors), errors
+
+    def test_rejects_placeholder_text_in_region(self):
+        regions = [{"id": "R01", "nameJA": "日本", "nameEN": "{{RELATED_DATA_JSON}}"}]
+        errors = build.validate_data([self._make_animal()], regions)
+        assert any("region 'R01'.nameEN" in e for e in errors), errors
+
+    def test_main_stops_before_writing_dist(self, tmp_path, capsys):
+        data_file = tmp_path / "data.xlsx"
+        data_file.write_bytes(b"")
+        dist = tmp_path / "dist"
+        bad = [self._make_animal("../../escaped")]
+        with patch.object(build, "DATA_FILE", data_file), \
+                patch.object(build, "DIST_DIR", dist), \
+                patch.object(build.openpyxl, "load_workbook", return_value=MagicMock(sheetnames=[])), \
+                patch.object(build, "extract_data", return_value=(bad, [])):
+            with pytest.raises(SystemExit) as exc:
+                build.main()
+        assert exc.value.code == 1
+        assert not dist.exists()
+        assert "invalid master data" in capsys.readouterr().out
+
+
 # ── Build integration (full pipeline) ───────────────────
 
 class TestBuildIntegration:
