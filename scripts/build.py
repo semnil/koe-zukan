@@ -12,6 +12,7 @@ Usage:
 import html as html_mod
 import json
 import os
+import re
 import shutil
 import sys
 from datetime import date
@@ -32,6 +33,10 @@ TEMPLATE_FILE = PROJECT_ROOT / "templates" / "index.html"
 ASSETS_DIR = PROJECT_ROOT / "assets"
 NO_AUDIO_FILE = PROJECT_ROOT / "data" / "no-audio.json"
 SITE_URL = "https://koe-zukan.semnil.com"
+
+# Master-data rules checked by validate_data() before anything is written.
+ID_PATTERN = re.compile(r"[A-Z][0-9]+")
+IMAGE_REF_PREFIX = "https://commons.wikimedia.org/"
 
 
 def _json_for_script(value):
@@ -203,6 +208,39 @@ def extract_data(wb):
         regions_data.append({"id": rid, **rm})
 
     return animals, regions_data
+
+
+def validate_data(animals, regions):
+    """Return the problems found in extracted data; an empty list means it may be published.
+
+    Each ID must fully match ID_PATTERN, each non-empty imageRef must start with
+    IMAGE_REF_PREFIX, and no string value of an animal or region may contain "{{".
+    """
+    errors = []
+    for a in animals:
+        aid = a["id"]
+        if not ID_PATTERN.fullmatch(aid):
+            errors.append(f"ID {aid!r} does not match {ID_PATTERN.pattern}")
+        image_ref = a.get("imageRef")
+        if image_ref and not (isinstance(image_ref, str) and image_ref.startswith(IMAGE_REF_PREFIX)):
+            errors.append(f"{aid!r}: imageRef {image_ref!r} does not start with {IMAGE_REF_PREFIX}")
+
+    def check_text(value, where):
+        if isinstance(value, str):
+            if "{{" in value:
+                errors.append(f"{where}: value {value!r} contains '{{{{'")
+        elif isinstance(value, dict):
+            for key, item in value.items():
+                check_text(item, f"{where}.{key}")
+        elif isinstance(value, list):
+            for idx, item in enumerate(value):
+                check_text(item, f"{where}[{idx}]")
+
+    for a in animals:
+        check_text(a, f"animal {a['id']!r}")
+    for r in regions:
+        check_text(r, f"region {r.get('id')!r}")
+    return errors
 
 
 def build_stats(animals):
@@ -983,6 +1021,12 @@ def main():
     # Extract data
     print("Extracting data...")
     animals, regions = extract_data(wb)
+    errors = validate_data(animals, regions)
+    if errors:
+        print("Error: invalid master data:")
+        for err in errors:
+            print(f"  {err}")
+        sys.exit(1)
     stats = build_stats(animals)
     print(f"  Species: {stats['total_species']}")
     print(f"  Onomatopoeia: {stats['total_onomatopoeia']}")
