@@ -165,7 +165,7 @@ In English: ID, Japanese name, phylum, class, order, family, has a voice, onomat
 ## Site architecture
 
 - Fully static site (no backend needed)
-- Frontend search: Fuse.js (loaded from a CDN)
+- Frontend search: Fuse.js (self-hosted at `assets/fuse.min.js`, copied to the site root at build)
 - Hiragana search: automatic katakana→hiragana conversion supports hiragana input such as "ねこ" and "にゃー"
 - Automatic browser language detection: the initial display language is chosen automatically from ja/en/ko/zh with `navigator.language` (the URL `?lang=` parameter takes precedence). **The fallback for unsupported locales is English** (so that non-CJK visitors such as French or German speakers do not see kanji they cannot read). index.html and species.html use the same detection logic
 - Multilingual detail pages: `/species/{ID}/` also supports 4 languages. The DOM is rewritten by combining `SPECIES_DATA` (embedded by build.py: ja+en of name/class/order/family/voiceMethod/regions, onomatopoeia in 4 languages, etc.) with the `I18N` dictionary (labels + IUCN conservation status translations). The initial HTML stays in Japanese (for SEO / no-JS visitors), and JS overwrites it in the selected language
