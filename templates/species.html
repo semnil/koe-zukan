@@ -514,7 +514,7 @@ const I18N = {
 function detectLang() {
   try {
     const urlLang = new URL(location).searchParams.get("lang");
-    if (urlLang && I18N[urlLang]) return urlLang;
+    if (urlLang && I18N.hasOwnProperty(urlLang)) return urlLang;
   } catch (e) { /* file:// or malformed location */ }
   const lang = (navigator.language || "").toLowerCase();
   if (lang.startsWith("ja")) return "ja";
@@ -542,7 +542,7 @@ function pickLocalized(data, code) {
 }
 
 function applyLang(code) {
-  if (!I18N[code]) code = "en";
+  if (!I18N.hasOwnProperty(code)) code = "en";
   currentLang = code;
   const L = I18N[code];
 
