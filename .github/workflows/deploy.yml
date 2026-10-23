@@ -17,6 +17,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
@@ -25,6 +26,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
+        timeout-minutes: 35
         run: |
           pip install openpyxl Pillow
           sudo apt-get install -y fonts-noto-cjk
@@ -45,6 +47,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
