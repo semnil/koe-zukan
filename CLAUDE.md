@@ -67,6 +67,8 @@ python3 scripts/build.py
 
 Reads `data/animal-sounds-data.xlsx` and writes the static site to `dist/`.
 
+CJK fonts for the OGP images: `_find_cjk_fonts()` (scripts/build.py) resolves font paths only for Windows and Linux (Noto Sans CJK). On macOS no path matches and Pillow's default font (no CJK coverage) is used, so OGP images built locally on macOS are missing CJK glyphs. The `.github/workflows/deploy.yml` CI step installs `fonts-noto-cjk`, so the deployed OGP images render with CJK glyphs.
+
 ### Build output
 
 - `animals.json`, `regions.json` — JSON data converted from Excel
