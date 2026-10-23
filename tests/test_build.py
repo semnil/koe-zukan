@@ -1359,8 +1359,8 @@ class TestExcelIntegrity:
 
 class TestServiceWorkerContracts:
     def test_sw_excludes_cdn_from_cache(self, tmp_path):
-        # URLS list must only contain same-origin paths. Cross-origin CDN
-        # (Fuse.js) is served opaque and cannot be precached deterministically.
+        # URLS list must only contain same-origin paths. A cross-origin CDN
+        # script would be served opaque and could not be precached deterministically.
         out = tmp_path / "sw.js"
         build.generate_sw([], out)
         sw = out.read_text(encoding="utf-8")
