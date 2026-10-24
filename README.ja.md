@@ -31,7 +31,7 @@ python3 -m http.server 8080 --directory dist
 
 ```
 koe-zukan/
-├── .github/workflows/            # テストと GitHub Pages へのデプロイ、workflow の検査
+├── .github/workflows/            # テストと GitHub Pages へのデプロイ、workflow の検査、Dependabot の自動マージ
 ├── assets/
 │   └── favicon.svg               # サイトアイコン（PWA アイコンの元）
 ├── data/
@@ -57,6 +57,8 @@ koe-zukan/
 ## Deploy
 
 pull request と `master` への push のたびに `.github/workflows/deploy.yml` がテストを実行し、`python scripts/build.py` でサイトをビルドします。`master` への push では、続けて `dist/` を GitHub Pages へデプロイします。公開先は https://koe-zukan.semnil.com です。
+
+Dependabot の pull request のうち patch か minor の更新は、必須チェックが通ると自動でマージされます (`.github/workflows/dependabot-auto-merge.yml`)。
 
 ## Data Editing
 

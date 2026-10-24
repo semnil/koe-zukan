@@ -15,9 +15,11 @@ graph LR
   github --> funding["FUNDING.yml<br>GitHub Sponsors"]
   github --> ghtests["tests/"]
   ghtests --> wfcheckstestsh["workflow-checks-test.sh<br>test that runs workflow-checks.yml against a fake gh and fixture git trees"]
+  ghtests --> automergetestsh["dependabot-auto-merge-test.sh<br>test that runs the deciding step of dependabot-auto-merge.yml against a fake gh"]
   ghtests --> deploytestsh["deploy-test.sh<br>test of the deploy.yml triggers, job conditions, build job permissions and concurrency group"]
   github --> workflows["workflows/"]
   workflows --> deployyml["deploy.yml<br>tests + build on every PR and push, GitHub Pages deploy on push to master (Python 3.12 + openpyxl + Pillow)"]
+  workflows --> automergeyml["dependabot-auto-merge.yml<br>enables auto-merge on a Dependabot PR with a patch or minor update"]
   workflows --> wfchecksyml["workflow-checks.yml<br>checks on every PR that uses: is pinned to a SHA and follows the same-repository reference rules"]
   workflows --> wfcheckstestyml["workflow-checks-test.yml<br>runs the workflow tests under .github/tests/"]
   root --> data["data/"]
@@ -125,7 +127,7 @@ Unreplaced placeholders produce a warning at build time (`_apply_placeholders`).
 GitHub Actions (`.github/workflows/deploy.yml`) runs its `build` job (tests, build and the Pages artifact upload) on every pull request, every push to master and every manual run, and its `deploy` job deploys on push to master and on a manual run (the `github-pages` environment accepts master only). CI runs `pip install` / `python -m pytest` / `python scripts/build.py` on setup-python 3.12 (separate from the `pip3` / `python3` of the local steps in the "Build" and "Tests" sections).
 GitHub Pages → custom domain `koe-zukan.semnil.com` (Route 53 CNAME → `semnil.github.io`).
 
-The `main` ruleset of master requires the status checks `action-pins` (`workflow-checks.yml`) and `build` (`deploy.yml`), and both report on every pull request.
+The `main` ruleset of master requires the status checks `action-pins` (`workflow-checks.yml`), `build` (`deploy.yml`) and `auto-merge` (`dependabot-auto-merge.yml`), and every one of them reports on every pull request. `dependabot-auto-merge.yml` enables auto-merge (merge commit) on a Dependabot pull request whose update is a semver patch or minor and which is a single verified Dependabot commit, and turns it off otherwise; the merge waits for the required checks. A merge made by auto-merge is attributed to GITHUB_TOKEN and starts no workflow on master, so `deploy.yml` does not deploy it; the next push to master or a manual run of `deploy.yml` does.
 
 ## Excel sheets (7 sheets)
 
