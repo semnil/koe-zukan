@@ -13,6 +13,8 @@ graph LR
   root --> claudemd["CLAUDE.md<br>this file"]
   root --> github[".github/"]
   github --> funding["FUNDING.yml<br>GitHub Sponsors"]
+  github --> codeowners["CODEOWNERS<br>@semnil owns every file (automatic review request)"]
+  github --> dependabotyml["dependabot.yml<br>daily Dependabot version updates of the workflow actions"]
   github --> ghtests["tests/"]
   ghtests --> wfcheckstestsh["workflow-checks-test.sh<br>test that runs workflow-checks.yml against a fake gh and fixture git trees"]
   ghtests --> automergetestsh["dependabot-auto-merge-test.sh<br>test that runs the deciding step of dependabot-auto-merge.yml against a fake gh"]
