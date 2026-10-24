@@ -31,7 +31,7 @@ python3 -m http.server 8080 --directory dist
 
 ```
 koe-zukan/
-├── .github/workflows/            # GitHub Pages へのデプロイと workflow の検査
+├── .github/workflows/            # テストと GitHub Pages へのデプロイ、workflow の検査
 ├── assets/
 │   └── favicon.svg               # サイトアイコン（PWA アイコンの元）
 ├── data/
@@ -56,7 +56,7 @@ koe-zukan/
 
 ## Deploy
 
-`master` へ push すると `.github/workflows/deploy.yml` がテストを実行し、`python scripts/build.py` でサイトをビルドして `dist/` を GitHub Pages へデプロイします。公開先は https://koe-zukan.semnil.com です。
+pull request と `master` への push のたびに `.github/workflows/deploy.yml` がテストを実行し、`python scripts/build.py` でサイトをビルドします。`master` への push では、続けて `dist/` を GitHub Pages へデプロイします。公開先は https://koe-zukan.semnil.com です。
 
 ## Data Editing
 

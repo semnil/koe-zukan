@@ -31,7 +31,7 @@ python3 -m http.server 8080 --directory dist
 
 ```
 koe-zukan/
-├── .github/workflows/            # Deploy to GitHub Pages and the workflow checks
+├── .github/workflows/            # Tests and deploy to GitHub Pages, workflow checks
 ├── assets/
 │   └── favicon.svg               # Site icon (source of the PWA icons)
 ├── data/
@@ -56,7 +56,7 @@ koe-zukan/
 
 ## Deploy
 
-Pushing to `master` runs `.github/workflows/deploy.yml`, which runs the tests, builds the site with `python scripts/build.py` and deploys `dist/` to GitHub Pages. The site is published at https://koe-zukan.semnil.com.
+Every pull request and every push to `master` run `.github/workflows/deploy.yml`, which runs the tests and builds the site with `python scripts/build.py`; a push to `master` also deploys `dist/` to GitHub Pages. The site is published at https://koe-zukan.semnil.com.
 
 ## Data Editing
 
