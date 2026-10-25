@@ -1,8 +1,13 @@
 name: Deploy to GitHub Pages
 
+# The build job runs the tests, builds the site and uploads it as the Pages artifact on every pull request, every push
+# to master and every manual run; the deploy job deploys it on a push or a manual run and is skipped on a pull request.
+# The build job's token can only read the repository. Each pull request has its own concurrency group, apart from the
+# `pages` group of the deploys. `build` is a required status check of master.
 on:
   push:
     branches: [master]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -11,13 +16,15 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: ${{ github.event_name == 'pull_request' && format('pages-pr-{0}', github.event.pull_request.number) || 'pages' }}
   cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 50
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -46,6 +53,7 @@ jobs:
           path: dist
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
