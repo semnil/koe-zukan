@@ -97,12 +97,12 @@ describe("kataToHira", () => {
   it("leaves halfwidth katakana untouched (documented limitation)", () => {
     // Halfwidth katakana (U+FF66-U+FF9D) is NOT converted. Search for
     // ｶﾀｶﾅ against ひらがな-indexed fields will miss. Safe as long as
-    // Excel data uses only fullwidth katakana (audit confirms).
+    // Excel data uses only fullwidth katakana.
     assert.equal(kataToHira("ｶﾀｶﾅ"), "ｶﾀｶﾅ");
     assert.equal(kataToHira("ﾆｬｰ"), "ﾆｬｰ");
   });
 
-  it("leaves pre-5.0 JIS katakana ヷヸヹヺ untouched (V007)", () => {
+  it("leaves pre-5.0 JIS katakana ヷヸヹヺ untouched", () => {
     // U+30F7-U+30FA are historical, outside the conversion regex. Real data
     // does not contain these so no user-visible impact.
     assert.equal(kataToHira("ヷ"), "ヷ");
@@ -138,7 +138,7 @@ describe("esc", () => {
     assert.equal(esc("a&b"), "a&amp;b");
   });
 
-  it("escapes single quotes (V001 fix)", () => {
+  it("escapes single quotes", () => {
     assert.equal(esc("');alert(1);//"), "&#39;);alert(1);//");
   });
 
