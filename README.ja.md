@@ -44,7 +44,7 @@ koe-zukan/
 │   ├── species.html              # 種ページのテンプレート
 │   └── icons.svg                 # UI のアイコンの SVG スプライト
 ├── tests/                        # pytest と node --test のテスト
-├── docs/                         # 検証・監査レポート
+├── docs/                         # 決定の記録 (docs/decisions/)
 ├── dist/                         # ビルド出力（デプロイ対象、git 管理外）
 │   ├── index.html
 │   ├── animals.json

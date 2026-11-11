@@ -44,7 +44,7 @@ koe-zukan/
 │   ├── species.html              # Species page template
 │   └── icons.svg                 # SVG sprite of the UI icons
 ├── tests/                        # pytest and node --test tests
-├── docs/                         # Verification and audit reports
+├── docs/                         # Decision records (docs/decisions/)
 ├── dist/                         # Build output (deployed, not tracked by git)
 │   ├── index.html
 │   ├── animals.json

@@ -52,7 +52,7 @@ class TestBuildAudioRef:
         assert build._build_audio_ref("M001", "Canis lupus", "") == ""
 
     def test_mammal_none_taxon_code(self):
-        """V004 fix: None taxon_code should not generate URL."""
+        """None taxon_code should not generate URL."""
         assert build._build_audio_ref("M001", "Canis lupus", None) == ""
 
     def test_insect_id_prefix(self):
@@ -329,7 +329,7 @@ class TestGenerateSpeciesPages:
         assert "Wikipedia (EN)" in page
 
     def test_species_page_html_escaping(self, tmp_path):
-        """V001: Special chars in data fields must be HTML-escaped."""
+        """Special chars in data fields must be HTML-escaped."""
         animal = self._make_animal()
         animal["note"] = 'Test <b>"note"</b> & more'
         build.generate_species_pages([animal], tmp_path)
@@ -1492,10 +1492,10 @@ class TestBuildAudioRefBoundaries:
         assert url == "https://xeno-canto.org/species/Cyanistes-caeruleus"
 
 
-# ── PWA icons (R3) ──────────────────────────────────────
+# ── PWA icons ───────────────────────────────────────────
 
 class TestPwaIcons:
-    """Raster PNG icons required by Chrome Android / Lighthouse PWA audit (M8)."""
+    """Raster PNG icons required by Chrome Android / Lighthouse PWA audit."""
 
     def test_generate_pwa_icons_produces_192_and_512(self, tmp_path):
         sizes = build.generate_pwa_icons(tmp_path)
@@ -1534,7 +1534,7 @@ class TestPwaIcons:
         )
 
 
-# ── Build idempotency (R3) ──────────────────────────────
+# ── Build idempotency ───────────────────────────────────
 
 class TestBuildIdempotency:
     """Running build twice on the same day must produce byte-identical output.
@@ -1569,11 +1569,11 @@ class TestBuildIdempotency:
         assert not diffs, f"Non-deterministic files: {diffs[:5]}"
 
 
-# ── SW × Manifest icon coherence (R3) ───────────────────
+# ── SW × Manifest icon coherence ────────────────────────
 
 class TestServiceWorkerManifestCoherence:
     """Cross-resource contract: PNG icons referenced by manifest should ideally
-    be precached. Currently the SW URLS list omits PNG icons (M8 added them
+    be precached. Currently the SW URLS list omits PNG icons (they were added
     after the SW template was written); lazy caching still works on first
     fetch. This test documents the gap so a future change gets noticed.
     """
@@ -1587,7 +1587,7 @@ class TestServiceWorkerManifestCoherence:
             (tmp_path / "manifest.json").read_text(encoding="utf-8")
         )
         png_srcs = [i["src"] for i in manifest["icons"] if i.get("type") == "image/png"]
-        assert png_srcs, "manifest has no PNG icons — M8 regression"
+        assert png_srcs, "manifest has no PNG icons"
         # Currently PNG icons are NOT precached (lazy cache-on-fetch). Flip the
         # assertion if this design changes.
         for src in png_srcs:
@@ -1596,11 +1596,11 @@ class TestServiceWorkerManifestCoherence:
             )
 
 
-# ── Template SVG extraction robustness (R3) ─────────────
+# ── Template SVG extraction robustness ──────────────────
 
 class TestSvgPointExtractionAnchoring:
     """Regex change: `d="..."` must only match the path data attribute, not
-    attributes that happen to end in `d` (e.g., `id=`). The R2 fix anchors on
+    attributes that happen to end in `d` (e.g., `id=`). The regex anchors on
     whitespace before `d=`.
     """
 

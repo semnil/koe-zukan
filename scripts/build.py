@@ -542,7 +542,7 @@ LANG_LABELS = {"ja": "日本語", "en": "English", "ko": "한국어", "zh": "中
 LANG_LABELS_JA = {"ja": "日本語", "en": "英語", "ko": "韓国語", "zh": "中国語"}
 
 # Matches CLASS_INFO in templates/index.html so cards and species pages show
-# the same class-specific tag color / icon (UX audit M5). "icon" is the name
+# the same class-specific tag color / icon. "icon" is the name
 # of a symbol in templates/icons.svg (icon-<name>).
 CLASS_INFO = {
     "鳥綱":     {"en": "Birds",       "icon": "bird",   "css": "class-bird"},
@@ -775,7 +775,7 @@ def generate_species_pages(animals, dist_dir):
 
         # External links. aria-label announces "new tab" for screen readers;
         # the icon is decorative (aria-hidden) per WAI guidance. `↗` marks the
-        # visual affordance for sighted users (UX audit M4). The data-link-kind
+        # visual affordance for sighted users. The data-link-kind
         # attribute lets the client script rewrite the aria-label per language
         # without re-rendering the anchor element.
         ext = '<span class="ext-mark" aria-hidden="true">↗</span>'
@@ -910,7 +910,7 @@ def generate_pwa_icons(dist_dir):
     """Generate 192x192 and 512x512 PWA PNG icons from favicon.svg.
 
     Chrome Android / Lighthouse PWA audit require raster PNG icons; the
-    SVG-only manifest is insufficient (UX audit M8). Mirrors the favicon
+    SVG-only manifest is insufficient. Mirrors the favicon
     palette (#047857 → #064e3b) with the cat silhouette centered.
     """
     try:

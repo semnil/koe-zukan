@@ -44,9 +44,7 @@ graph LR
   tests --> testbuild["test_build.py<br>build.py unit tests (pytest)"]
   tests --> testfrontend["test_frontend.mjs<br>frontend logic tests (node --test)"]
   root --> docs["docs/"]
-  docs --> verification["verification-report.md<br>software verification report (V### findings + audit round entries)"]
-  docs --> uxaudit["ux-audit-report.md<br>UI/UX audit report (WCAG 2.1 AA / 2.2 AA conformance check)"]
-  docs --> qualityaudit["quality-audit-report.md<br>quality audit report (contract / syntax / pixel checks)"]
+  docs --> decisions["decisions/<br>decision records (closed decisions, their reasons and the alternatives turned down)"]
   root --> dist["dist/<br>build output (GitHub Pages deploy target, gitignored)"]
   dist --> distindex["index.html<br>generated from the template (placeholders replaced)"]
   dist --> animalsjson["animals.json"]
@@ -206,6 +204,8 @@ In English: ID, Japanese name, phylum, class, order, family, has a voice, onomat
 | Related species | None | None | Yes |
 | Detail link | Yes (inside the modal) | Yes ("View detail page →") | — (this page) |
 
+A new content element goes on the species page unless there is a reason to put it on another layer. The purpose of each layer is in `docs/decisions/seo.md`.
+
 ### Multilingual UI constants (index.html)
 
 - `NO_VOICE_LABEL` — "Silent" in 4 languages
@@ -255,17 +255,19 @@ The detail page is self-contained and switches between 4 languages. When `applyL
 - canonical URL:
   - Top page: `<link rel="canonical" href="https://koe-zukan.semnil.com/">` — normalizes each `?lang=` / `?id=` / `?q=` variation to `/`
   - Species page: `<link rel="canonical" href=".../species/{ID}/">` — normalizes URLs with `?lang=`
+  - A new URL that keeps state in a query parameter has to stay normalized to the canonical URL of its page. A new per-language URL needs all 5 hreflang links updated
 - Structured data (JSON-LD):
   - Top page: `@type: WebSite` (name / alternateName / url / description / `inLanguage: [ja, en, ko, zh]` / `potentialAction: SearchAction`)
-  - The SearchAction `urlTemplate` is `https://koe-zukan.semnil.com/?q={search_term_string}`; the index.html JS takes `?q=`, puts it in the search box and runs `onSearch()`
+  - The SearchAction `urlTemplate` is `https://koe-zukan.semnil.com/?q={search_term_string}`; the index.html JS takes `?q=`, puts it in the search box and runs `onSearch()`. A change to the SearchAction or to the name of the query parameter changes the JSON-LD and the `?q=` handling together
   - Species page: `@type: Article` (headline / description / url / publisher). Strings are escaped with `_json_for_script()` (`<`/`>`/`&` to `\u003c` etc.)
 - Sitemap: `dist/sitemap.xml` has only the top page URL. Species pages can be discovered through internal links (modal → species page + related species) but are not in the sitemap
   - Reason: excluded because species pages produced a large number of "Crawled - currently not indexed" entries (the policy of commit `8f76bf3`)
+  - A change to `generate_sitemap()` keeps the sitemap to the top page. The condition for reopening this is in `docs/decisions/seo.md`
 - meta description / OGP / Twitter Card are set on both pages. og:locale is `ja_JP` in the initial HTML, and JS rewrites it to `ja_JP` / `en_US` / `ko_KR` / `zh_CN` for the selected language
 
 ### Accessibility
 
-- Conforms to WCAG 2.1 AA and the additional WCAG 2.2 AA SC (every item judged Pass in UX audit round 3)
+- Conforms to WCAG 2.1 AA and the additional WCAG 2.2 AA SC
 - `<main id="main">` landmark + `.skip-link` "Skip to content" (both the index and species templates)
 - `<html lang>` is synced by JS to the display language on both pages (initial value `ja`)
 - Local `lang` attributes: `lang="en"` on English names, `lang="la"` on scientific names, per-language (`ja`/`en`/`ko`/`zh`) on the onomatopoeia `ono-cell-text`; the "alt-name" element on species pages switches between `lang="ja"`/`lang="en"` with the display language
@@ -280,11 +282,11 @@ The detail page is self-contained and switches between 4 languages. When `applyL
 
 ### Security
 
-- HTML escaping: `esc()` on the JS side (V001 added `'` → `&#39;`), `html.escape()` on the Python side
+- HTML escaping: `esc()` on the JS side (it also escapes `'` to `&#39;`), `html.escape()` on the Python side
 - JSON-LD escaping: `_json_for_script()` (scripts/build.py) converts `<`/`>`/`&` to `\u003c` `\u003e` `\u0026`, preventing a `</script>` payload from escaping the script block (OWASP recommendation)
 - Every external link has `rel="noopener"`
 - URL construction is unified on `encodeURIComponent()` (JS side) / `urllib.parse.quote(..., safe="")` (Python side)
-- Wikipedia links use the same encoding rule in both Python and JS (V011 fix)
+- Wikipedia links use the same encoding rule in both Python and JS
 - Master-data validation: `validate_data()` (scripts/build.py) stops the build before anything is written when a main-data ID does not fully match `ID_PATTERN` (`[A-Z][0-9]+`), a non-empty `imageRef` does not start with `IMAGE_REF_PREFIX` (`https://commons.wikimedia.org/`), or any extracted animal or region value contains `{{`
 
 ### PWA / Service Worker
@@ -355,4 +357,6 @@ python3 -m pytest tests/test_build.py --cov=scripts --cov-report=term-missing
 
 ## Documents
 
-- **Override of the global CLAUDE.md's 「ドキュメント」 language rule**: this file is written entirely in English, and `README.md` is maintained in English with its Japanese counterpart `README.ja.md` (same sections in the same order, cross-linked at the top). The verification and audit reports under `docs/` (`verification-report.md`, `ux-audit-report.md`, `quality-audit-report.md`) are written in English only, with no Japanese counterpart
+- **Override of the global CLAUDE.md's 「ドキュメント」 language rule**: this file is written entirely in English, and `README.md` is maintained in English with its Japanese counterpart `README.ja.md` (same sections in the same order, cross-linked at the top). The decision records under `docs/decisions/` are written in English with a Japanese counterpart `<name>.ja.md` (same sections in the same order, cross-linked at the top)
+- Decision records: closed decisions, their reasons, the alternatives turned down and the conditions for reopening them are in `docs/decisions/`. The sections above describe the current state only
+- Comments and docstrings in the code are written in English. An Excel sheet name in a comment stays in Japanese as it is, with an English gloss, because the code opens the sheets by those names (e.g. `wb["名称マッピング"]`)
