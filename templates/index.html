@@ -303,6 +303,12 @@ header {
   font-weight: 600;
   white-space: nowrap;
 }
+.icon {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  flex-shrink: 0;
+}
 .class-bird { background: var(--tag-bird); color: #1e40af; }
 .class-mammal { background: var(--tag-mammal); color: #be185d; }
 .class-insect { background: var(--tag-insect); color: #a16207; }
@@ -496,6 +502,7 @@ footer {
 </style>
 </head>
 <body>
+{{ICON_SPRITE}}
 
 <a href="#main" class="skip-link">コンテンツへスキップ</a>
 
@@ -543,15 +550,17 @@ footer {
 
 <script>
 const CLASS_INFO = {
-  "鳥綱":     { en: "Birds",      icon: "🐦", css: "class-bird" },
-  "哺乳綱":   { en: "Mammals",    icon: "🐾", css: "class-mammal" },
-  "昆虫綱":   { en: "Insects",    icon: "🦗", css: "class-insect" },
-  "両生綱":   { en: "Amphibians", icon: "🐸", css: "class-amphibian" },
-  "爬虫綱":   { en: "Reptiles",   icon: "🦎", css: "class-reptile" },
-  "硬骨魚綱": { en: "Fish",       icon: "🐟", css: "class-fish" },
-  "甲殻綱":   { en: "Crustaceans",icon: "🦀", css: "class-other" },
-  "二枚貝綱": { en: "Bivalves",   icon: "🐚", css: "class-other" },
+  "鳥綱":     { en: "Birds",      icon: "bird",   css: "class-bird" },
+  "哺乳綱":   { en: "Mammals",    icon: "paw",    css: "class-mammal" },
+  "昆虫綱":   { en: "Insects",    icon: "insect", css: "class-insect" },
+  "両生綱":   { en: "Amphibians", icon: "frog",   css: "class-amphibian" },
+  "爬虫綱":   { en: "Reptiles",   icon: "lizard", css: "class-reptile" },
+  "硬骨魚綱": { en: "Fish",       icon: "fish",   css: "class-fish" },
+  "甲殻綱":   { en: "Crustaceans",icon: "crab",   css: "class-other" },
+  "二枚貝綱": { en: "Bivalves",   icon: "shell",  css: "class-other" },
 };
+// Used for a class that CLASS_INFO does not list.
+const CLASS_INFO_FALLBACK = { icon: "generic", css: "class-other", en: "" };
 
 const LANG_LABELS = { ja: "日本語", en: "English", ko: "한국어", zh: "中文" };
 const LANG_TITLES = {
@@ -706,7 +715,7 @@ function updateFilterLabels() {
     } else {
       const info = CLASS_INFO[btn.dataset.cls];
       const label = displayLang === "ja" ? btn.dataset.cls : (info?.en || btn.dataset.cls);
-      btn.textContent = `${info?.icon || ""} ${label} (${btn.dataset.count})`;
+      btn.innerHTML = `${info ? iconSvg(info.icon) : ""} ${esc(label)} (${esc(btn.dataset.count)})`;
     }
   });
 }
@@ -853,7 +862,7 @@ function renderFilters() {
     btn.dataset.cls = cls;
     btn.dataset.count = counts[cls];
     const label = displayLang === "ja" ? cls : (info.en || cls);
-    btn.textContent = `${info.icon} ${label} (${counts[cls]})`;
+    btn.innerHTML = `${iconSvg(info.icon)} ${esc(label)} (${esc(counts[cls])})`;
     btn.setAttribute("aria-pressed", "false");
     btn.onclick = () => { activeClass = cls; updateFilters(); onSearch(); };
     container.appendChild(btn);
@@ -951,7 +960,7 @@ function renderResults(results) {
   }
 
   container.innerHTML = results.map(a => {
-    const ci = CLASS_INFO[a.class] || { icon: "🔹", css: "class-other", en: "" };
+    const ci = CLASS_INFO[a.class] || CLASS_INFO_FALLBACK;
     const ono = getOno(a, displayLang) || (displayLang !== "ja" ? a.onomatopoeiaJA : "");
     const hasVoice = a.hasVoice === "あり";
 
@@ -968,7 +977,7 @@ function renderResults(results) {
     return `<button type="button" class="card" data-id="${esc(a.id)}">
       <div class="card-header">
         <div class="card-name">${esc(getDisplayName(a))}</div>
-        <span class="class-tag ${ci.css}">${ci.icon} ${esc(getClassLabel(ci, a))}</span>
+        <span class="class-tag ${ci.css}">${iconSvg(ci.icon)} ${esc(getClassLabel(ci, a))}</span>
       </div>
       ${onoHTML}
       <div class="card-meta">
@@ -994,7 +1003,7 @@ function openModal(id, pushState = true) {
     url.searchParams.set("id", id);
     history.pushState({ id }, "", url);
   }
-  const ci = CLASS_INFO[a.class] || { icon: "🔹", css: "class-other", en: "" };
+  const ci = CLASS_INFO[a.class] || CLASS_INFO_FALLBACK;
 
   const onoEntries = a.onomatopoeia.filter(o => o.onomatopoeia);
   const modalOnos = (() => {
@@ -1006,7 +1015,7 @@ function openModal(id, pushState = true) {
     <button class="modal-close" id="modalCloseBtn" type="button" aria-label="${esc(CLOSE_LABEL[displayLang] || CLOSE_LABEL.ja)}">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
-    <span class="class-tag ${ci.css}">${ci.icon} ${esc(getClassLabel(ci, a))}</span>
+    <span class="class-tag ${ci.css}">${iconSvg(ci.icon)} ${esc(getClassLabel(ci, a))}</span>
     <h2 id="modal-title" style="margin-top:0.5rem">${esc(getDisplayName(a))}</h2>
     <div class="en-name" lang="${displayLang === "ja" ? "en" : "ja"}">${displayLang === "ja" ? esc(a.nameEN) : esc(a.nameJA)}${displayLang === "ja" && a.altEN ? ` (${esc(a.altEN)})` : ""}</div>
     <div class="sci" lang="la">${esc(a.scientificName)}</div>
@@ -1073,6 +1082,12 @@ function closeModal(pushState = true) {
     url.searchParams.delete("id");
     history.pushState({}, "", url);
   }
+}
+
+// Inline SVG that draws the sprite symbol icon-<name> (decorative).
+// Mirror of _icon() in scripts/build.py.
+function iconSvg(name) {
+  return `<svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-${name}"/></svg>`;
 }
 
 function esc(s) {

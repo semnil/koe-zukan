@@ -41,7 +41,8 @@ koe-zukan/
 │   └── build.py                  # Excel → JSON + HTML 生成
 ├── templates/
 │   ├── index.html                # メインページのテンプレート
-│   └── species.html              # 種ページのテンプレート
+│   ├── species.html              # 種ページのテンプレート
+│   └── icons.svg                 # UI のアイコンの SVG スプライト
 ├── tests/                        # pytest と node --test のテスト
 ├── docs/                         # 検証・監査レポート
 ├── dist/                         # ビルド出力（デプロイ対象、git 管理外）

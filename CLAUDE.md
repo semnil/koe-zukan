@@ -39,6 +39,7 @@ graph LR
   root --> templates["templates/"]
   templates --> indextpl["index.html<br>main page template (placeholders: {{SITE_URL}}, {{SPECIES_COUNT}}, etc.)"]
   templates --> speciestpl["species.html<br>per-species page template (for SEO, JSON-LD structured data)"]
+  templates --> iconssvg["icons.svg<br>SVG sprite of the UI icons (embedded into both pages)"]
   root --> tests["tests/"]
   tests --> testbuild["test_build.py<br>build.py unit tests (pytest)"]
   tests --> testfrontend["test_frontend.mjs<br>frontend logic tests (node --test)"]
@@ -94,6 +95,7 @@ CJK fonts for the OGP images: `_find_cjk_fonts()` (scripts/build.py) resolves fo
 | Placeholder | Content |
 |---|---|
 | `{{SITE_URL}}` | Site URL (the `SITE_URL` constant in build.py) |
+| `{{ICON_SPRITE}}` | The SVG sprite `templates/icons.svg` (the symbols that the icons draw) |
 | `{{SPECIES_COUNT}}` | Number of species |
 | `{{LANGUAGE_COUNT}}` | Number of languages |
 | `{{ONOMATOPOEIA_COUNT}}` | Total number of onomatopoeia entries |
@@ -103,12 +105,13 @@ CJK fonts for the OGP images: `_find_cjk_fonts()` (scripts/build.py) resolves fo
 | Placeholder | Content |
 |---|---|
 | `{{SITE_URL}}` | Site URL |
+| `{{ICON_SPRITE}}` | The SVG sprite `templates/icons.svg` (the symbols that the icons draw) |
 | `{{ID}}` | Species ID |
 | `{{NAME_JA}}`, `{{NAME_EN}}` | Japanese name, English name |
 | `{{SCIENTIFIC_NAME}}` | Scientific name |
 | `{{ALT_EN}}` | English alternative name (in parentheses, or empty) |
 | `{{CLASS}}`, `{{ORDER}}`, `{{FAMILY}}` | Class, order, family |
-| `{{CLASS_CSS}}`, `{{CLASS_ICON}}` | Per-class tag CSS class and emoji (colors / icons unified with the top page) |
+| `{{CLASS_CSS}}`, `{{CLASS_ICON}}` | Per-class tag CSS class and icon (an inline SVG that draws a sprite symbol; colors / icons unified with the top page) |
 | `{{VOICE_METHOD}}` | Vocalization method ("—" if none) |
 | `{{CONSERVATION}}` | Conservation status (IUCN code + Japanese label) |
 | `{{REGIONS}}` | Habitat regions (separated by the Japanese comma 、) |
@@ -187,7 +190,8 @@ In English: ID, Japanese name, phylum, class, order, family, has a voice, onomat
 - URL parameter `?id=` links directly to a card, and `?q=` sets the initial search query (the contract of the SearchAction `urlTemplate` in the `WebSite` JSON-LD)
 - Google Search Console integration (sitemap + ownership verification meta tag)
 - Related species links: a "Related species" section on species pages (4-level fallback family→order→class→phylum, at most 4 entries) — strengthens internal links for SEO
-- Onomatopoeia pronunciation playback (species pages): a `🔊` button (`.ono-play`, 44×44 tap target) in each onomatopoeia cell (`.ono-cell`). It calls the browser's built-in TTS through the Web Speech API (`speechSynthesis` + `SpeechSynthesisUtterance`), mapping `data-play-lang` (ja/en/ko/zh) to a BCP-47 tag (`ja-JP`/`en-US`/`ko-KR`/`zh-CN`) with `PLAY_LANG_MAP` before playing. `utter.rate = 0.9` makes it slightly slower. In environments without `speechSynthesis`, JS adds `html.no-tts` at startup and CSS hides the buttons. `speechSynthesis.cancel()` is called before repeated clicks and before a new utterance to prevent overlapping playback, and `cancel()` is also called on `beforeunload` so playback does not continue across page navigation. During playback the button gets the `.playing` class (accent background), removed on `onend`/`onerror`. `updatePlayLabels(code)` regenerates the aria-label for the display language (e.g. `日本語の発音を再生` / `Play Japanese pronunciation` / `일본어 발음 재생` / `播放日语发音`; 4×4 = 16 combinations of `PLAY_LABELS` × `LANG_NAMES_LOCALIZED`). The initial HTML outputs the aria-label with the Japanese language names (`LANG_LABELS_JA`: 英語/韓国語/中国語), so that it reads naturally in Japanese even without JS
+- Icons: the UI uses no emoji. Every icon is a `<symbol>` (`icon-<name>`) of `templates/icons.svg`, which build.py embeds into both pages, and is drawn with `<svg class="icon" aria-hidden="true" focusable="false"><use href="#icon-<name>"/></svg>` (decorative, sized to the text with `1em`). `_icon()` in build.py and `iconSvg()` in the two templates build that markup. `CLASS_INFO` (build.py, mirrored in index.html) holds the symbol name of each class, and `CLASS_INFO_FALLBACK` the one for a class it does not list
+- Onomatopoeia pronunciation playback (species pages): a speaker icon button (`.ono-play`, 44×44 tap target) in each onomatopoeia cell (`.ono-cell`). It calls the browser's built-in TTS through the Web Speech API (`speechSynthesis` + `SpeechSynthesisUtterance`), mapping `data-play-lang` (ja/en/ko/zh) to a BCP-47 tag (`ja-JP`/`en-US`/`ko-KR`/`zh-CN`) with `PLAY_LANG_MAP` before playing. `utter.rate = 0.9` makes it slightly slower. In environments without `speechSynthesis`, JS adds `html.no-tts` at startup and CSS hides the buttons. `speechSynthesis.cancel()` is called before repeated clicks and before a new utterance to prevent overlapping playback, and `cancel()` is also called on `beforeunload` so playback does not continue across page navigation. During playback the button gets the `.playing` class (accent background), removed on `onend`/`onerror`. `updatePlayLabels(code)` regenerates the aria-label for the display language (e.g. `日本語の発音を再生` / `Play Japanese pronunciation` / `일본어 발음 재생` / `播放日语发音`; 4×4 = 16 combinations of `PLAY_LABELS` × `LANG_NAMES_LOCALIZED`). The initial HTML outputs the aria-label with the Japanese language names (`LANG_LABELS_JA`: 英語/韓国語/中国語), so that it reads naturally in Japanese even without JS
 
 ### Content differentiation (card / modal / species page)
 

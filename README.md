@@ -41,7 +41,8 @@ koe-zukan/
 │   └── build.py                  # Generates JSON + HTML from Excel
 ├── templates/
 │   ├── index.html                # Main page template
-│   └── species.html              # Species page template
+│   ├── species.html              # Species page template
+│   └── icons.svg                 # SVG sprite of the UI icons
 ├── tests/                        # pytest and node --test tests
 ├── docs/                         # Verification and audit reports
 ├── dist/                         # Build output (deployed, not tracked by git)

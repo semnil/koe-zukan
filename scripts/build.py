@@ -30,6 +30,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_FILE = PROJECT_ROOT / "data" / "animal-sounds-data.xlsx"
 DIST_DIR = PROJECT_ROOT / "dist"
 TEMPLATE_FILE = PROJECT_ROOT / "templates" / "index.html"
+ICON_SPRITE_FILE = PROJECT_ROOT / "templates" / "icons.svg"
 ASSETS_DIR = PROJECT_ROOT / "assets"
 NO_AUDIO_FILE = PROJECT_ROOT / "data" / "no-audio.json"
 SITE_URL = "https://koe-zukan.semnil.com"
@@ -281,6 +282,22 @@ def _apply_placeholders(html, mapping, skip_warn=None):
     return html
 
 
+def _load_icon_sprite():
+    """Return the SVG sprite that both page templates embed at {{ICON_SPRITE}}."""
+    with open(ICON_SPRITE_FILE, "r", encoding="utf-8") as f:
+        return f.read().strip()
+
+
+def _icon(name):
+    """Inline SVG that draws the sprite symbol icon-<name>. The icon is
+    decorative, so it is hidden from assistive technology. Mirrored by
+    iconSvg() in templates/index.html and templates/species.html."""
+    return (
+        f'<svg class="icon" aria-hidden="true" focusable="false">'
+        f'<use href="#icon-{name}"/></svg>'
+    )
+
+
 def generate_html(animals, template_path, output_path):
     """Read HTML template and inject data if template exists."""
     if template_path.exists():
@@ -298,6 +315,7 @@ def generate_html(animals, template_path, output_path):
     stats = build_stats(animals)
     html = _apply_placeholders(html, {
         "SITE_URL": SITE_URL,
+        "ICON_SPRITE": _load_icon_sprite(),
         "SPECIES_COUNT": stats['total_species'],
         "LANGUAGE_COUNT": stats['language_count'],
         "ONOMATOPOEIA_COUNT": stats['total_onomatopoeia'],
@@ -524,17 +542,20 @@ LANG_LABELS = {"ja": "日本語", "en": "English", "ko": "한국어", "zh": "中
 LANG_LABELS_JA = {"ja": "日本語", "en": "英語", "ko": "韓国語", "zh": "中国語"}
 
 # Matches CLASS_INFO in templates/index.html so cards and species pages show
-# the same class-specific tag color / icon (UX audit M5).
+# the same class-specific tag color / icon (UX audit M5). "icon" is the name
+# of a symbol in templates/icons.svg (icon-<name>).
 CLASS_INFO = {
-    "鳥綱":     {"en": "Birds",       "icon": "🐦", "css": "class-bird"},
-    "哺乳綱":   {"en": "Mammals",     "icon": "🐾", "css": "class-mammal"},
-    "昆虫綱":   {"en": "Insects",     "icon": "🦗", "css": "class-insect"},
-    "両生綱":   {"en": "Amphibians",  "icon": "🐸", "css": "class-amphibian"},
-    "爬虫綱":   {"en": "Reptiles",    "icon": "🦎", "css": "class-reptile"},
-    "硬骨魚綱": {"en": "Fish",        "icon": "🐟", "css": "class-fish"},
-    "甲殻綱":   {"en": "Crustaceans", "icon": "🦀", "css": "class-other"},
-    "二枚貝綱": {"en": "Bivalves",    "icon": "🐚", "css": "class-other"},
+    "鳥綱":     {"en": "Birds",       "icon": "bird",   "css": "class-bird"},
+    "哺乳綱":   {"en": "Mammals",     "icon": "paw",    "css": "class-mammal"},
+    "昆虫綱":   {"en": "Insects",     "icon": "insect", "css": "class-insect"},
+    "両生綱":   {"en": "Amphibians",  "icon": "frog",   "css": "class-amphibian"},
+    "爬虫綱":   {"en": "Reptiles",    "icon": "lizard", "css": "class-reptile"},
+    "硬骨魚綱": {"en": "Fish",        "icon": "fish",   "css": "class-fish"},
+    "甲殻綱":   {"en": "Crustaceans", "icon": "crab",   "css": "class-other"},
+    "二枚貝綱": {"en": "Bivalves",    "icon": "shell",  "css": "class-other"},
 }
+# Used for a class that CLASS_INFO does not list.
+CLASS_INFO_FALLBACK = {"icon": "generic", "css": "class-other"}
 
 
 def _json_for_inline_script(obj):
@@ -553,7 +574,7 @@ def _json_for_inline_script(obj):
     )
 
 
-def _build_species_payload(a, class_info):
+def _build_species_payload(a):
     """Build the i18n-ready species payload that is embedded in species pages."""
     ono = []
     for o in a.get("onomatopoeia", []):
@@ -590,7 +611,6 @@ def _build_species_payload(a, class_info):
             "ja": a.get("family", ""),
             "en": a.get("familyEN", "") or a.get("family", ""),
         },
-        "classIcon": class_info.get("icon", ""),
         "voiceMethod": {
             "ja": voice_method_ja,
             "en": voice_method_en,
@@ -702,6 +722,7 @@ def generate_species_pages(animals, dist_dir):
     with open(SPECIES_TEMPLATE, "r", encoding="utf-8") as f:
         template = f.read()
 
+    icon_sprite = _load_icon_sprite()
     esc = html_mod.escape
     count = 0
     for a in animals:
@@ -726,7 +747,7 @@ def generate_species_pages(animals, dist_dir):
                     f'<button type="button" class="ono-play" '
                     f'data-play-lang="{lang_attr}" data-play-text="{ono_text}" '
                     f'aria-label="{aria_lang_name}の発音を再生">'
-                    f'<span aria-hidden="true">\U0001f50a</span></button>'
+                    f'{_icon("speaker")}</button>'
                 )
                 ono_html_parts.append(
                     f'<div class="ono-cell">'
@@ -753,7 +774,7 @@ def generate_species_pages(animals, dist_dir):
         regions_text = "、".join(esc(r["nameJA"]) for r in a["regions"]) or esc(a.get("habitat", ""))
 
         # External links. aria-label announces "new tab" for screen readers;
-        # emoji is decorative (aria-hidden) per WAI guidance. `↗` marks the
+        # the icon is decorative (aria-hidden) per WAI guidance. `↗` marks the
         # visual affordance for sighted users (UX audit M4). The data-link-kind
         # attribute lets the client script rewrite the aria-label per language
         # without re-rendering the anchor element.
@@ -764,7 +785,7 @@ def generate_species_pages(animals, dist_dir):
                 f'<a href="{esc(a["imageRef"])}" target="_blank" rel="noopener" '
                 f'data-link-kind="commons" '
                 f'aria-label="Wikimedia Commons (新しいタブで開く)">'
-                f'<span aria-hidden="true">📷</span> Wikimedia Commons {ext}</a>'
+                f'{_icon("camera")} Wikimedia Commons {ext}</a>'
             )
         if a.get("audioRef"):
             audio_label = "xeno-canto" if aid.startswith("B") else "Macaulay Library"
@@ -773,14 +794,14 @@ def generate_species_pages(animals, dist_dir):
                 f'<a href="{esc(a["audioRef"])}" target="_blank" rel="noopener" '
                 f'data-link-kind="{audio_kind}" '
                 f'aria-label="{audio_label} (新しいタブで開く)">'
-                f'<span aria-hidden="true">🔊</span> {audio_label} {ext}</a>'
+                f'{_icon("speaker")} {audio_label} {ext}</a>'
             )
         links.append(
             f'<a href="https://ja.wikipedia.org/wiki/{quote(a["nameJA"], safe="")}" '
             f'target="_blank" rel="noopener" '
             f'data-link-kind="wiki-ja" '
             f'aria-label="Wikipedia 日本語版 (新しいタブで開く)">'
-            f'<span aria-hidden="true">📖</span> Wikipedia (JA) {ext}</a>'
+            f'{_icon("book")} Wikipedia (JA) {ext}</a>'
         )
         if a.get("nameEN"):
             links.append(
@@ -788,7 +809,7 @@ def generate_species_pages(animals, dist_dir):
                 f'target="_blank" rel="noopener" '
                 f'data-link-kind="wiki-en" '
                 f'aria-label="Wikipedia English (opens in new tab)">'
-                f'<span aria-hidden="true">📖</span> Wikipedia (EN) {ext}</a>'
+                f'{_icon("book")} Wikipedia (EN) {ext}</a>'
             )
         links_html = "\n".join(links)
 
@@ -814,12 +835,13 @@ def generate_species_pages(animals, dist_dir):
         json_headline_text = f"{a['nameJA']} ({a.get('nameEN', '')})" if a.get('nameEN') else a['nameJA']
         json_headline = _json_for_script(json_headline_text)
         json_desc = _json_for_script(desc)
-        class_info = CLASS_INFO.get(a.get("class", ""), {"icon": "🔹", "css": "class-other"})
+        class_info = CLASS_INFO.get(a.get("class", ""), CLASS_INFO_FALLBACK)
         related = _build_related_species(a, animals)
-        species_payload = _build_species_payload(a, class_info)
+        species_payload = _build_species_payload(a)
         related_payload = _build_related_payload(related)
         page = _apply_placeholders(template, {
             "SITE_URL": SITE_URL,
+            "ICON_SPRITE": icon_sprite,
             "ID": esc(aid),
             "NAME_JA": esc(a["nameJA"]),
             "NAME_EN": esc(a.get("nameEN", "")),
@@ -827,7 +849,7 @@ def generate_species_pages(animals, dist_dir):
             "ALT_EN": f" ({esc(alt_en)})" if alt_en else "",
             "CLASS": esc(a.get("class", "")),
             "CLASS_CSS": class_info["css"],
-            "CLASS_ICON": class_info["icon"],
+            "CLASS_ICON": _icon(class_info["icon"]),
             "ORDER": esc(a.get("order", "")),
             "FAMILY": esc(a.get("family", "")),
             "VOICE_METHOD": esc(a.get("voiceMethod", "") or "—"),
@@ -853,7 +875,7 @@ def generate_species_pages(animals, dist_dir):
             f'<a class="share-btn" href="https://twitter.com/intent/tweet?text={et}&url={eu}" target="_blank" rel="noopener" data-share-kind="x" aria-label="X (Twitter) \u3067\u5171\u6709 (\u65b0\u3057\u3044\u30bf\u30d6)">X Post</a>'
             f'<a class="share-btn" href="https://www.facebook.com/sharer/sharer.php?u={eu}" target="_blank" rel="noopener" data-share-kind="fb" aria-label="Facebook \u3067\u5171\u6709 (\u65b0\u3057\u3044\u30bf\u30d6)">Facebook</a>'
             f'<a class="share-btn" href="https://social-plugins.line.me/lineit/share?url={eu}" target="_blank" rel="noopener" data-share-kind="line" aria-label="LINE \u3067\u5171\u6709 (\u65b0\u3057\u3044\u30bf\u30d6)">LINE</a>'
-            f'<button type="button" class="share-btn" data-share-kind="copy" data-copy-url="{esc(share_url)}"><span aria-hidden="true">\U0001f4cb</span> <span class="copy-label">URL\u3092\u30b3\u30d4\u30fc</span></button>'
+            f'<button type="button" class="share-btn" data-share-kind="copy" data-copy-url="{esc(share_url)}">{_icon("clipboard")} <span class="copy-label">URL\u3092\u30b3\u30d4\u30fc</span></button>'
         )
         page = page.replace("{{SHARE_BUTTONS}}", share_html)
 
