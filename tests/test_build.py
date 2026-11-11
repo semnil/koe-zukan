@@ -8,6 +8,7 @@ Usage:
 import html as html_mod
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -1621,3 +1622,82 @@ class TestSvgPointExtractionAnchoring:
         assert (6.0, 6.0) in pts
         # The bogus data-d coords must NOT be extracted.
         assert all(x not in {"X1", "Y1"} for pt in pts for x in pt)
+
+
+# ── SVG icons ───────────────────────────────────────────
+
+class TestSvgIcons:
+    """Icons are symbols of templates/icons.svg drawn with <use>, and no
+    emoji is written into the UI. build.py, templates/index.html and
+    templates/species.html name the symbols separately, so every name has to
+    exist in the sprite.
+    """
+
+    TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
+    # Emoji and pictograph blocks. Arrows and the check mark of the UI text
+    # (← → ↗ ✓) are outside these ranges.
+    PICTOGRAPH_RE = re.compile("[\U0001F000-\U0001FAFF\u2600-\u26FF\u2B00-\u2BFF]")
+
+    def _sprite_ids(self):
+        sprite = build.ICON_SPRITE_FILE.read_text(encoding="utf-8")
+        return set(re.findall(r'<symbol id="icon-([a-z]+)"', sprite))
+
+    def _species_page(self, tmp_path, cls="鳥綱"):
+        animal = {
+            "id": "B001", "nameJA": "スズメ", "nameEN": "Eurasian Tree Sparrow",
+            "scientificName": "Passer montanus", "altJA": "", "altEN": "",
+            "class": cls, "order": "スズメ目", "family": "スズメ科",
+            "voiceMethod": "鳴管", "conservation": "LC", "habitat": "", "note": "",
+            "imageRef": "https://commons.wikimedia.org/wiki/Category:Passer_montanus",
+            "audioRef": "https://xeno-canto.org/species/Passer-montanus",
+            "onomatopoeiaJA": "チュンチュン",
+            "onomatopoeia": [{"lang": "ja", "onomatopoeia": "チュンチュン", "scene": "", "note": ""}],
+            "regions": [],
+        }
+        build.generate_species_pages([animal], tmp_path)
+        return (tmp_path / "species" / "B001" / "index.html").read_text(encoding="utf-8")
+
+    def test_sprite_defines_every_class_icon(self):
+        names = {info["icon"] for info in build.CLASS_INFO.values()}
+        names.add(build.CLASS_INFO_FALLBACK["icon"])
+        assert names <= self._sprite_ids()
+
+    def test_index_template_class_icons_mirror_build(self):
+        html = (self.TEMPLATES_DIR / "index.html").read_text(encoding="utf-8")
+        mirrored = dict(re.findall(r'"([^"]+)":\s*\{ en: "[^"]*",\s*icon: "([a-z]+)"', html))
+        assert mirrored == {cls: info["icon"] for cls, info in build.CLASS_INFO.items()}
+        fallback = re.search(r'CLASS_INFO_FALLBACK = \{ icon: "([a-z]+)"', html)
+        assert fallback and fallback.group(1) == build.CLASS_INFO_FALLBACK["icon"]
+
+    def test_template_scripts_name_only_sprite_symbols(self):
+        ids = self._sprite_ids()
+        for name in ("index.html", "species.html"):
+            html = (self.TEMPLATES_DIR / name).read_text(encoding="utf-8")
+            assert "{{ICON_SPRITE}}" in html
+            assert set(re.findall(r'iconSvg\("([a-z]+)"\)', html)) <= ids
+
+    def test_species_page_icons_resolve_to_embedded_symbols(self, tmp_path):
+        page = self._species_page(tmp_path)
+        used = set(re.findall(r'<use href="#icon-([a-z]+)"', page))
+        defined = set(re.findall(r'<symbol id="icon-([a-z]+)"', page))
+        assert {"bird", "speaker", "camera", "book", "clipboard"} <= used
+        assert used <= defined
+        assert "{{ICON_SPRITE}}" not in page
+
+    def test_unlisted_class_uses_fallback_icon(self, tmp_path):
+        page = self._species_page(tmp_path, cls="クモ綱")
+        assert '<use href="#icon-generic"/></svg> <span id="classTagText">' in page
+
+    def test_index_page_embeds_sprite(self, tmp_path):
+        out = tmp_path / "index.html"
+        build.generate_html([], self.TEMPLATES_DIR / "index.html", out)
+        page = out.read_text(encoding="utf-8")
+        assert '<symbol id="icon-bird"' in page
+        assert "{{ICON_SPRITE}}" not in page
+
+    def test_no_emoji_in_templates_or_generated_page(self, tmp_path):
+        texts = {name: (self.TEMPLATES_DIR / name).read_text(encoding="utf-8")
+                 for name in ("index.html", "species.html", "icons.svg")}
+        texts["species page"] = self._species_page(tmp_path)
+        for name, text in texts.items():
+            assert not self.PICTOGRAPH_RE.search(text), f"emoji in {name}"
