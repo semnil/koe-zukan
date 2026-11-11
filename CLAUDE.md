@@ -358,6 +358,5 @@ python3 -m pytest tests/test_build.py --cov=scripts --cov-report=term-missing
 ## Documents
 
 - **Override of the global CLAUDE.md's 「ドキュメント」 language rule**: this file is written entirely in English, and `README.md` is maintained in English with its Japanese counterpart `README.ja.md` (same sections in the same order, cross-linked at the top). The decision records under `docs/decisions/` are written in English with a Japanese counterpart `<name>.ja.md` (same sections in the same order, cross-linked at the top)
-- Verification and audit reports are not kept in this repository
 - Decision records: closed decisions, their reasons, the alternatives turned down and the conditions for reopening them are in `docs/decisions/`. The sections above describe the current state only
 - Comments and docstrings in the code are written in English. An Excel sheet name in a comment stays in Japanese as it is, with an English gloss, because the code opens the sheets by those names (e.g. `wb["名称マッピング"]`)
