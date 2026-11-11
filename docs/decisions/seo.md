@@ -13,7 +13,7 @@ Closed decisions about how the site presents itself to search engines and how co
 
 ## Cards, the modal and species pages carry different content
 
-- **Decision** (2026-05-16, V025 in `docs/verification-report.md`): each layer has its own purpose and its own content.
+- **Decision** (2026-05-16, commit `1f0bcf3`): each layer has its own purpose and its own content.
 
   | Layer | Purpose | Content of its own |
   |---|---|---|
@@ -26,11 +26,11 @@ Closed decisions about how the site presents itself to search engines and how co
 
 ## Query-parameter URLs are canonicalized and hreflang points at the page itself
 
-- **Decision** (2026-05-16, V026 and V027 in `docs/verification-report.md`): the top page and each species page declare a canonical URL without query parameters, so the `?lang=`, `?id=` and `?q=` variations of a page count as that one page. Both kinds of page carry 5 hreflang links (ja / en / ko / zh / x-default), and those of a species page point at its own `/species/{ID}/?lang=*`.
+- **Decision** (2026-05-16, commit `9d494fe`): the top page and each species page declare a canonical URL without query parameters, so the `?lang=`, `?id=` and `?q=` variations of a page count as that one page. Both kinds of page carry 5 hreflang links (ja / en / ko / zh / x-default), and those of a species page point at its own `/species/{ID}/?lang=*`.
 - **Reason**: language switching, the deep link to a card and the search entry point give one page several URLs, and without a canonical URL those can be treated as duplicate content. The hreflang links follow Google's specification, in which the language versions of a page, the page itself included, link to one another.
 - **Earlier form**: the hreflang links of a species page pointed at the top page (`/?lang=*&id={ID}`).
 
 ## The SearchAction and `?q=` stay after the rich result was retired
 
 - **Decision**: the `WebSite` JSON-LD of the top page keeps its `SearchAction`, and `index.html` keeps handling `?q=`. As long as the `urlTemplate` is declared, the URL it describes has to work.
-- **History**: the `SearchAction` was added on 2026-05-16 (V027 in `docs/verification-report.md`) to meet the conditions of Google's Sitelinks Search Box. Google announced the end of that rich result in its Search Central blog post "Farewell, Sitelinks Search Box" (2024-10-21). On 2026-10-17 the mention of the Sitelinks Search Box as the reason was removed from `CLAUDE.md` ([#45](https://github.com/semnil/koe-zukan/pull/45)).
+- **History**: the `SearchAction` was added on 2026-05-16 (commit `9d494fe`) to meet the conditions of Google's Sitelinks Search Box. Google announced the end of that rich result in its Search Central blog post "Farewell, Sitelinks Search Box" (2024-10-21). On 2026-10-17 the mention of the Sitelinks Search Box as the reason was removed from `CLAUDE.md` ([#45](https://github.com/semnil/koe-zukan/pull/45)).

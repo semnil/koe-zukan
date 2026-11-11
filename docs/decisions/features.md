@@ -6,7 +6,7 @@ Closed decisions about what the site offers and how, with their reasons, the alt
 
 ## Pronunciation playback uses the Web Speech API
 
-- **Decision** (2026-05-16, V028 in `docs/verification-report.md`): each onomatopoeia cell of a species page has a play button that speaks the text with the browser's built-in speech synthesis (`speechSynthesis`). How a word is read is left to the speech engine of the OS and the browser.
+- **Decision** (2026-05-16, commit `2fc3eb5`): each onomatopoeia cell of a species page has a play button that speaks the text with the browser's built-in speech synthesis (`speechSynthesis`). How a word is read is left to the speech engine of the OS and the browser.
 - **Reason**: the aim is to let a visitor hear how an onomatopoeia is pronounced in a language other than their own. The Web Speech API does that with no external dependency and no added cost or files, and it covers the 4 languages (`ja-JP` / `en-US` / `ko-KR` / `zh-CN`) at once. That fits the site's policy of having no external dependencies.
 - **Alternatives turned down**:
   - Generating mp3 files ahead of time with a cloud text-to-speech service and committing them. 305 species × 4 languages came to about 1,200 files, and the generation cost, the repository size and the API key to manage were too much for what it would give. The site would have stayed fully static.

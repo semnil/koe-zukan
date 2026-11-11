@@ -13,7 +13,7 @@
 
 ## カード・モーダル・種ページは違う内容を持つ
 
-- **決定** (2026-05-16、`docs/verification-report.md` の V025): 層ごとに目的と固有の内容を持たせる。
+- **決定** (2026-05-16、コミット `1f0bcf3`): 層ごとに目的と固有の内容を持たせる。
 
   | 層 | 目的 | 固有の内容 |
   |---|---|---|
@@ -26,11 +26,11 @@
 
 ## クエリパラメータ付きの URL は canonical に集め、hreflang は自分のページを指す
 
-- **決定** (2026-05-16、`docs/verification-report.md` の V026 と V027): トップページと各種ページは、クエリパラメータの無い canonical URL を宣言する。これで、1 つのページの `?lang=`・`?id=`・`?q=` の違いは、その 1 ページとして数えられる。どちらのページも hreflang を 5 本 (ja / en / ko / zh / x-default) 持ち、種ページの hreflang は自分自身の `/species/{ID}/?lang=*` を指す。
+- **決定** (2026-05-16、コミット `9d494fe`): トップページと各種ページは、クエリパラメータの無い canonical URL を宣言する。これで、1 つのページの `?lang=`・`?id=`・`?q=` の違いは、その 1 ページとして数えられる。どちらのページも hreflang を 5 本 (ja / en / ko / zh / x-default) 持ち、種ページの hreflang は自分自身の `/species/{ID}/?lang=*` を指す。
 - **理由**: 言語の切り替え・カードへのディープリンク・検索の入口によって、1 つのページが複数の URL を持つ。canonical URL が無いと、重複コンテンツとして扱われうる。hreflang は、Google の仕様 (自分自身を含めて、言語ごとの版が互いを指す形) に合わせている。
 - **前の形**: 種ページの hreflang はトップページ (`/?lang=*&id={ID}`) を指していた。
 
 ## リッチリザルトが終わった後も SearchAction と `?q=` を残す
 
 - **決定**: トップページの `WebSite` JSON-LD は `SearchAction` を持ち続け、`index.html` は `?q=` を受け続ける。`urlTemplate` を宣言している限り、それが表す URL は実際に動かなければならない。
-- **経緯**: `SearchAction` は、Google の Sitelinks Search Box の条件を満たすために 2026-05-16 に足した (`docs/verification-report.md` の V027)。Google は、このリッチリザルトの終了を Search Central ブログの記事「Farewell, Sitelinks Search Box」(2024-10-21) で告知している。2026-10-17 に、Sitelinks Search Box を理由として挙げる記述を `CLAUDE.md` から消した ([#45](https://github.com/semnil/koe-zukan/pull/45))。
+- **経緯**: `SearchAction` は、Google の Sitelinks Search Box の条件を満たすために 2026-05-16 に足した (コミット `9d494fe`)。Google は、このリッチリザルトの終了を Search Central ブログの記事「Farewell, Sitelinks Search Box」(2024-10-21) で告知している。2026-10-17 に、Sitelinks Search Box を理由として挙げる記述を `CLAUDE.md` から消した ([#45](https://github.com/semnil/koe-zukan/pull/45))。
