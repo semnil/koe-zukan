@@ -10,7 +10,7 @@ A multilingual animal onomatopoeia search site. A static site is generated from 
 ```mermaid
 graph LR
   root["koe-zukan/"]
-  root --> claudemd["CLAUDE.md<br>this file"]
+  root --> claudemd["AGENTS.md<br>this file"]
   root --> github[".github/"]
   github --> funding["FUNDING.yml<br>GitHub Sponsors"]
   github --> codeowners["CODEOWNERS<br>@semnil owns every file (automatic review request)"]
