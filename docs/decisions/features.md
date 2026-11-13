@@ -2,7 +2,7 @@
 
 > 日本語版は [features.ja.md](features.ja.md) を参照してください.
 
-Closed decisions about what the site offers and how, with their reasons, the alternatives that were turned down and the conditions for reopening them. The current behavior is described in [CLAUDE.md](../../CLAUDE.md) ("Site architecture").
+Closed decisions about what the site offers and how, with their reasons, the alternatives that were turned down and the conditions for reopening them. The current behavior is described in [AGENTS.md](../../AGENTS.md) ("Site architecture").
 
 ## Pronunciation playback uses the Web Speech API
 

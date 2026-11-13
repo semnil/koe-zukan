@@ -50,7 +50,7 @@ koe-zukan/
 │   ├── animals.json
 │   ├── regions.json
 │   └── species/{ID}/index.html
-├── CLAUDE.md                     # Detailed technical specification
+├── AGENTS.md                     # Detailed technical specification
 ├── README.md
 └── README.ja.md
 ```
@@ -65,7 +65,7 @@ A Dependabot pull request whose update is a patch or minor version is merged aut
 
 The master data is kept in `data/animal-sounds-data.xlsx`. After editing the Excel file, run `python3 scripts/build.py` to regenerate `dist/`.
 
-See [CLAUDE.md](CLAUDE.md) for the details of the data structure.
+See [AGENTS.md](AGENTS.md) for the details of the data structure.
 
 ## License
 

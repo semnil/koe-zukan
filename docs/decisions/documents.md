@@ -2,7 +2,7 @@
 
 > 日本語版は [documents.ja.md](documents.ja.md) を参照してください.
 
-Closed decisions about the documents of this repository. The current rules are in [CLAUDE.md](../../CLAUDE.md) ("Documents").
+Closed decisions about the documents of this repository. The current rules are in [AGENTS.md](../../AGENTS.md) ("Documents").
 
 ## English base of the documents and the code text
 
