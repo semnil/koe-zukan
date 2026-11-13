@@ -2,7 +2,7 @@
 
 > For the English version, see [seo.md](seo.md).
 
-サイトを検索エンジンにどう見せるか、カード・モーダル・種ページに内容をどう分けるかについて閉じた判断と、その理由、決定を開け直す条件を持つ。今の挙動は [CLAUDE.md](../../CLAUDE.md) の「SEO settings」と「Content differentiation (card / modal / species page)」にある。
+サイトを検索エンジンにどう見せるか、カード・モーダル・種ページに内容をどう分けるかについて閉じた判断と、その理由、決定を開け直す条件を持つ。今の挙動は [AGENTS.md](../../AGENTS.md) の「SEO settings」と「Content differentiation (card / modal / species page)」にある。
 
 ## サイトマップにはトップページだけを載せる
 

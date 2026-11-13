@@ -50,7 +50,7 @@ koe-zukan/
 │   ├── animals.json
 │   ├── regions.json
 │   └── species/{ID}/index.html
-├── CLAUDE.md                     # 詳細な技術仕様
+├── AGENTS.md                     # 詳細な技術仕様
 ├── README.md
 └── README.ja.md
 ```
@@ -65,7 +65,7 @@ Dependabot の pull request のうち patch か minor の更新は、必須チ�
 
 マスターデータは `data/animal-sounds-data.xlsx` で管理しています。Excel ファイルの編集後に `python3 scripts/build.py` を実行すると `dist/` が再生成されます。
 
-データ構造の詳細は [CLAUDE.md](CLAUDE.md) を参照してください。
+データ構造の詳細は [AGENTS.md](AGENTS.md) を参照してください。
 
 ## License
 

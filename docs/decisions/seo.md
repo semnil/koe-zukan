@@ -2,7 +2,7 @@
 
 > 日本語版は [seo.ja.md](seo.ja.md) を参照してください.
 
-Closed decisions about how the site presents itself to search engines and how content is divided between the card, the modal and the species page, with their reasons and the conditions for reopening them. The current behavior is described in [CLAUDE.md](../../CLAUDE.md) ("SEO settings" and "Content differentiation (card / modal / species page)").
+Closed decisions about how the site presents itself to search engines and how content is divided between the card, the modal and the species page, with their reasons and the conditions for reopening them. The current behavior is described in [AGENTS.md](../../AGENTS.md) ("SEO settings" and "Content differentiation (card / modal / species page)").
 
 ## The sitemap lists the top page only
 

@@ -2,7 +2,7 @@
 
 > For the English version, see [documents.md](documents.md).
 
-このリポジトリの文書について閉じた判断を持つ。今の規則は [CLAUDE.md](../../CLAUDE.md) の「Documents」にある。
+このリポジトリの文書について閉じた判断を持つ。今の規則は [AGENTS.md](../../AGENTS.md) の「Documents」にある。
 
 ## 文書とコードの中の文の英語基本化
 

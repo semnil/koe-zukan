@@ -2,7 +2,7 @@
 
 > For the English version, see [features.md](features.md).
 
-サイトが何をどう提供するかについて閉じた判断と、その理由、却下した案、決定を開け直す条件を持つ。今の挙動は [CLAUDE.md](../../CLAUDE.md) の「Site architecture」にある。
+サイトが何をどう提供するかについて閉じた判断と、その理由、却下した案、決定を開け直す条件を持つ。今の挙動は [AGENTS.md](../../AGENTS.md) の「Site architecture」にある。
 
 ## 発音の再生には Web Speech API を使う
 
